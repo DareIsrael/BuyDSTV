@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db';
 import { Customer } from '@/models/Customer';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { name, email, phone, address, password } = await request.json();

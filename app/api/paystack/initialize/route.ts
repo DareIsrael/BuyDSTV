@@ -3,6 +3,8 @@ import { paystackService } from '@/services/paystack.service';
 import { orderService } from '@/services/order.service';
 import { generateReference } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const {
