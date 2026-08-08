@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
 import Link from 'next/link';
-import { MdOutlineEmail } from 'react-content-type';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
