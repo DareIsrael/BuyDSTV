@@ -8,7 +8,7 @@ import { useState } from 'react';
 export const Navbar: React.FC = () => {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-  const user = session?.user as any;
+  const user = session?.user as { role?: string; name?: string } | undefined;
 
   return (
     <motion.nav

@@ -11,7 +11,7 @@ export class PaystackService {
     email: string,
     amount: number,
     reference: string,
-    metadata: any
+    metadata: Record<string, unknown>
   ): Promise<{
     status: boolean;
     data: { authorization_url: string; reference: string };

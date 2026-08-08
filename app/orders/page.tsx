@@ -9,7 +9,7 @@ import { IOrder } from '@/types/order';
 import Link from 'next/link';
 
 export default function CustomerOrdersPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);

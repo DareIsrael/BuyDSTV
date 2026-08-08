@@ -16,7 +16,7 @@ export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('orders');
-  const [products, setProducts] = useState<IProduct[]>([]);
+  const [_products, setProducts] = useState<IProduct[]>([]);
   const [packages, setPackages] = useState<IPackage[]>([]);
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +39,7 @@ export default function AdminPage() {
       return;
     }
     if (status === 'authenticated') {
-      const user = session?.user as any;
+      const user = session?.user as { role?: string };
       if (user?.role !== 'admin') {
         router.push('/');
         return;

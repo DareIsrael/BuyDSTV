@@ -30,8 +30,9 @@ export default function ForgotPasswordPage() {
 
       setMessage({ type: 'success', text: data.message || 'Check your email for a reset link.' });
       setEmail('');
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+      setMessage({ type: 'error', text: errorMsg });
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { connectDB } from '@/lib/db';
 import { Customer } from '@/models/Customer';
 
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const { token, newPassword } = await request.json();
 
-    if (!token || !newPassword) {
+    if (!token || typeof token !== 'string' || !newPassword || typeof newPassword !== 'string') {
       return NextResponse.json(
         { error: 'Token and new password are required' },
         { status: 400 }
@@ -25,9 +26,11 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
     const customer = await Customer.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() },
+      $or: [{ resetPasswordToken: hashedToken }, { resetPasswordToken: token }],
+      resetPasswordExpires: { $gt: new Date() },
     });
 
     if (!customer) {
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Set the new password
+    // Set the new password securely
     customer.password = await bcrypt.hash(newPassword, 12);
     customer.resetPasswordToken = undefined;
     customer.resetPasswordExpires = undefined;
@@ -53,3 +56,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

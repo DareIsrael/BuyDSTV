@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { packageService } from '@/services/package.service';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,18 +29,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { name, price, productType } = await request.json();
 
-    if (!name || !price || !productType) {
+    if (!name || typeof price !== 'number' || !productType) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing or invalid required fields' },
         { status: 400 }
       );
     }
 
     const newPackage = await packageService.createPackage({
       name,
-      price: price * 100, // Convert to kobo
+      price: Math.round(price * 100), // Convert to kobo
       productType,
     });
 
@@ -54,6 +61,11 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

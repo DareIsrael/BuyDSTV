@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { productService } from '@/services/product.service';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +20,11 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { dstvPrice, gotvPrice, dstvWithDishPrice } = await request.json();
 
     if (
@@ -31,9 +38,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    await productService.updateProductByType('dstv', dstvPrice * 100);
-    await productService.updateProductByType('gotv', gotvPrice * 100);
-    await productService.updateProductByType('dstv-with-dish', dstvWithDishPrice * 100);
+    await productService.updateProductByType('dstv', Math.round(dstvPrice * 100));
+    await productService.updateProductByType('gotv', Math.round(gotvPrice * 100));
+    await productService.updateProductByType('dstv-with-dish', Math.round(dstvWithDishPrice * 100));
 
     return NextResponse.json({ success: true });
   } catch (error) {

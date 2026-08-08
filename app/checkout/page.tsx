@@ -13,8 +13,9 @@ interface CheckoutPageProps {
 
 export default async function CheckoutPage({ searchParams }: CheckoutPageProps) {
   const session = await getServerSession(authOptions);
+  const user = session?.user as { id: string; role?: string; name?: string; email?: string; phone?: string; address?: string } | undefined;
 
-  if (!session || (session.user as any)?.role !== 'customer') {
+  if (!session || !user || user.role !== 'customer') {
     const params = await searchParams;
     const product = params.product || 'dstv';
     redirect(`/auth/login?product=${product}&callbackUrl=${encodeURIComponent(`/checkout?product=${product}`)}`);
@@ -38,8 +39,6 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
       </div>
     );
   }
-
-  const user = session.user as any;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark pt-16">

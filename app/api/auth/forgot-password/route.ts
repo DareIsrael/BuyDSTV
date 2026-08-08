@@ -10,37 +10,38 @@ export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
 
-    if (!email) {
+    if (!email || typeof email !== 'string') {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'Valid email is required' },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    const customer = await Customer.findOne({ email: email.toLowerCase() });
+    const customer = await Customer.findOne({ email: email.toLowerCase().trim() });
 
     if (!customer) {
       // Even if customer doesn't exist, we return success to prevent email enumeration
-      return NextResponse.json({ success: true, message: 'If that email is strictly registered, a reset link was sent.' });
+      return NextResponse.json({ success: true, message: 'If that email is registered, a reset link was sent.' });
     }
 
-    // Generate token
-    const token = crypto.randomBytes(32).toString('hex');
+    // Generate secure random raw token for email link
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    // Hash token before storing in database
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
-    customer.resetPasswordToken = token;
-    // 1 hour expiry
-    customer.resetPasswordExpires = new Date(Date.now() + 3600000); 
+    customer.resetPasswordToken = hashedToken;
+    customer.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour expiry
 
     await customer.save();
 
-    // Determine base URL dynamically (works locally and heavily deployed)
+    // Determine base URL safely (prefer NEXT_PUBLIC_BASE_URL env)
+    const hostHeader = request.headers.get('host');
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
-    const host = request.headers.get('host');
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (hostHeader ? `${protocol}://${hostHeader}` : 'http://localhost:3000');
     
-    const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
+    const resetUrl = `${baseUrl}/auth/reset-password?token=${rawToken}`;
 
     const emailResponse = await sendPasswordResetEmail({
       to: customer.email,
@@ -63,3 +64,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

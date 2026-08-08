@@ -49,19 +49,21 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        const u = user as typeof user & { role?: string; phone?: string; address?: string };
         token.id = user.id;
-        token.role = (user as any).role;
-        token.phone = (user as any).phone;
-        token.address = (user as any).address;
+        token.role = u.role;
+        token.phone = u.phone;
+        token.address = u.address;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id as string;
-        (session.user as any).role = token.role as string;
-        (session.user as any).phone = token.phone as string;
-        (session.user as any).address = token.address as string;
+        const su = session.user as typeof session.user & { id?: string; role?: string; phone?: string; address?: string };
+        su.id = token.id as string;
+        su.role = token.role as string;
+        su.phone = token.phone as string;
+        su.address = token.address as string;
       }
       return session;
     },
