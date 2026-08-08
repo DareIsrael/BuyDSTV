@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 
+import Image from 'next/image';
+
 export const Navbar: React.FC = () => {
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,8 +21,16 @@ export const Navbar: React.FC = () => {
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group">
+            <Image
+              src="/BuyDSTV_LOGO.png"
+              alt="BuyDSTV Logo"
+              width={140}
+              height={40}
+              className="h-8 sm:h-10 w-auto object-contain transition-transform group-hover:scale-105"
+              priority
+            />
+            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary via-blue-400 to-secondary bg-clip-text text-transparent tracking-tight">
               BuyDSTV
             </span>
           </Link>

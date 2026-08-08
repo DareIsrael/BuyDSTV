@@ -163,7 +163,7 @@ export const Hero: React.FC = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/95 md:from-dark/80 md:via-dark/60 md:to-dark/90" />
 
       {/* Content */}
-      <div className="relative z-10 text-center px-4 py-8 md:py-16 w-full">
+      <div className="relative z-10 text-center px-4 pt-24 pb-8 sm:pt-28 md:py-16 w-full">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}

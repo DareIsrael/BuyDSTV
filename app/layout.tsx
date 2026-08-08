@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'BuyDSTV - DSTV & GOTV Decoders',
   description: 'Purchase DSTV and GOTV decoders with subscription packages. Fast delivery, secure payment.',
+  icons: {
+    icon: '/BuyDSTV_LOGO.png',
+    shortcut: '/BuyDSTV_LOGO.png',
+    apple: '/BuyDSTV_LOGO.png',
+  },
 };
 
 export default function RootLayout({
