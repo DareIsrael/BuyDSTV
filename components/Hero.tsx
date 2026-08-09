@@ -219,14 +219,48 @@ export const Hero: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
-          className="mt-12 md:mt-16 space-y-2 px-4"
+          className="mt-10 md:mt-14 space-y-4 px-4"
         >
-          <p className="text-gray-300 text-xs sm:text-sm">
+          <p className="text-gray-300 text-xs sm:text-sm font-medium tracking-wide uppercase">
             Fast Delivery • Secure Payment • 24/7 Support
           </p>
-          <p className="text-gray-300 text-xs sm:text-sm">
-            For Support, Call or Whatsapp: 09164633598
-          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-1">
+            {/* Call Link */}
+            <a
+              href="tel:09164633598"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900/80 hover:bg-gray-800 border border-gray-700/60 text-gray-200 hover:text-white text-xs sm:text-sm transition-all shadow-md hover:scale-105"
+            >
+              <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.11-.27c1.21.49 2.53.76 3.88.76a1 1 0 011 1v3.5a1 1 0 01-1 1A17.93 17.93 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.35.27 2.67.76 3.88a1 1 0 01-.27 1.11l-2.2 2.2z" />
+              </svg>
+              <span>09164633598</span>
+            </a>
+
+            {/* WhatsApp Chat Button */}
+            <a
+              href="https://wa.me/2349164633598"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 hover:text-emerald-100 text-xs sm:text-sm font-medium transition-all shadow-md hover:scale-105"
+            >
+              <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l.999 1.595-1.156 4.218 4.316-1.132 1.584.986zm10.748-4.887c-.244-.122-1.444-.712-1.668-.794-.223-.081-.386-.122-.549.122-.163.245-.631.794-.773.957-.143.163-.285.184-.529.061-.244-.122-1.033-.381-1.968-1.214-.727-.648-1.218-1.448-1.361-1.693-.143-.245-.015-.377.107-.499.11-.11.244-.285.366-.427.122-.143.163-.245.244-.407.082-.163.041-.306-.02-.428-.061-.122-.549-1.325-.752-1.812-.198-.475-.399-.411-.549-.418l-.468-.008c-.163 0-.427.061-.65.306-.224.245-.855.836-.855 2.039 0 1.203.876 2.364.998 2.527.122.163 1.724 2.632 4.177 3.691.583.252 1.038.403 1.393.516.586.186 1.12.16 1.542.097.471-.07 1.444-.591 1.647-1.161.204-.571.204-1.06.143-1.161-.061-.102-.224-.163-.468-.285z" />
+              </svg>
+              <span>WhatsApp Chat</span>
+            </a>
+
+            {/* Email Link */}
+            <a
+              href="mailto:support@buydstv.com.ng"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900/80 hover:bg-gray-800 border border-gray-700/60 text-gray-200 hover:text-white text-xs sm:text-sm transition-all shadow-md hover:scale-105"
+            >
+              <svg className="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <span>support@buydstv.com.ng</span>
+            </a>
+          </div>
         </motion.div>
       </div>
     </div>
