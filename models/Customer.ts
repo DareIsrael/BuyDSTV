@@ -46,5 +46,8 @@ const CustomerSchema = new Schema<ICustomer>(
   }
 );
 
+// Index for password reset token lookups
+CustomerSchema.index({ resetPasswordToken: 1 });
+
 export const Customer: Model<ICustomer> =
   mongoose.models.Customer || mongoose.model<ICustomer>('Customer', CustomerSchema);

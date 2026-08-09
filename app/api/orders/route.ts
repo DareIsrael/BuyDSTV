@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = session.user as any;
+    const user = session.user as { id?: string; role?: string };
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get('reference');
 
@@ -33,14 +33,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(order);
     }
 
-    // Admin can see all orders
+    // Admin gets paginated orders
     if (user.role === 'admin') {
-      const orders = await orderService.getAllOrders();
-      return NextResponse.json(orders);
+      const page = parseInt(searchParams.get('page') || '1', 10);
+      const limit = parseInt(searchParams.get('limit') || '20', 10);
+      const result = await orderService.getAllOrdersPaginated(page, limit);
+      return NextResponse.json(result);
     }
 
     // Customer can only see their own orders
-    if (user.role === 'customer') {
+    if (user.role === 'customer' && user.id) {
       const orders = await orderService.getOrdersByCustomerId(user.id);
       return NextResponse.json(orders);
     }
@@ -59,7 +61,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || (session.user as any)?.role !== 'admin') {
+    if (!session || (session.user as { role?: string })?.role !== 'admin') {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

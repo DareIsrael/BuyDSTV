@@ -62,5 +62,11 @@ const OrderSchema = new Schema<IOrder>(
   }
 );
 
+// Indexes for efficient queries
+OrderSchema.index({ customerId: 1, createdAt: -1 });
+OrderSchema.index({ email: 1 });
+OrderSchema.index({ paymentStatus: 1 });
+OrderSchema.index({ createdAt: -1 });
+
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);

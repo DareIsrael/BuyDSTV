@@ -22,13 +22,13 @@ export const authOptions: NextAuthOptions = {
         const customer = await Customer.findOne({ email: credentials.email.toLowerCase() });
 
         if (!customer) {
-          throw new Error("No account found with this email");
+          throw new Error("Invalid email or password");
         }
 
         const isValid = await bcrypt.compare(credentials.password, customer.password);
 
         if (!isValid) {
-          throw new Error("Invalid password");
+          throw new Error("Invalid email or password");
         }
 
         return {

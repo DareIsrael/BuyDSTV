@@ -3,11 +3,16 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { connectDB } from '@/lib/db';
 import { Customer } from '@/models/Customer';
+import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.resetPassword);
+    if (rateLimited) return rateLimited;
+
     const { token, newPassword } = await request.json();
 
     if (!token || typeof token !== 'string' || !newPassword || typeof newPassword !== 'string') {
@@ -26,10 +31,11 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    // Only match the hashed token — never accept raw token directly
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     const customer = await Customer.findOne({
-      $or: [{ resetPasswordToken: hashedToken }, { resetPasswordToken: token }],
+      resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: new Date() },
     });
 
@@ -56,4 +62,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

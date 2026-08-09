@@ -6,16 +6,23 @@ import { packageService } from '@/services/package.service';
 import { generateReference } from '@/lib/utils';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.paymentInit);
+    if (rateLimited) return rateLimited;
+
     const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
     const {
       email,
-      amount,
       product,
       package: packageName,
       customerName,
@@ -24,39 +31,44 @@ export async function POST(request: NextRequest) {
       customerId,
     } = await request.json();
 
-    if (!email || !amount || !product || !packageName || !customerName || !customerId) {
+    if (!email || !product || !packageName || !customerName || !customerId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Enforce session user identity matching if logged in
-    if (session?.user && (session.user as any).id !== customerId) {
+    // Enforce session user identity
+    const user = session.user as { id?: string };
+    if (user.id !== customerId) {
       return NextResponse.json({ error: 'Unauthorized customer ID' }, { status: 403 });
     }
 
-    // Verify amount server-side to prevent price tampering
+    // Determine product type
     let productType: 'dstv' | 'gotv' | 'dstv-with-dish' = 'dstv';
     if (product.toLowerCase().includes('gotv')) productType = 'gotv';
     if (product.toLowerCase().includes('dish')) productType = 'dstv-with-dish';
 
+    // Look up server-side prices — REJECT if not found
     const dbProduct = await productService.getProductByType(productType);
+    if (!dbProduct) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 400 });
+    }
+
     const dbPackages = await packageService.getPackagesByProductType(productType);
     const dbPackage = dbPackages.find((p) => p.name === packageName);
-
-    if (dbProduct && dbPackage) {
-      const expectedTotal = dbProduct.price + dbPackage.price;
-      if (amount < expectedTotal) {
-        return NextResponse.json({ error: 'Invalid transaction amount' }, { status: 400 });
-      }
+    if (!dbPackage) {
+      return NextResponse.json({ error: 'Package not found' }, { status: 400 });
     }
+
+    // Calculate amount SERVER-SIDE — never trust client amount
+    const serverAmount = dbProduct.price + dbPackage.price;
 
     const reference = generateReference();
 
     const response = await paystackService.initializePayment(
       email,
-      amount,
+      serverAmount,
       reference,
       { product, package: packageName, customerName, phone, address }
     );
@@ -70,7 +82,7 @@ export async function POST(request: NextRequest) {
         address: address || '',
         product,
         package: packageName,
-        totalPrice: amount,
+        totalPrice: serverAmount,
         reference,
       });
 

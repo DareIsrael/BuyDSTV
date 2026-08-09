@@ -1,28 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { paystackService } from '@/services/paystack.service';
-import { orderService } from '@/services/order.service';
+import { connectDB } from '@/lib/db';
+import { Order } from '@/models/Order';
+import { sendPurchaseConfirmationEmail } from '@/lib/email';
+import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.paymentVerify);
+    if (rateLimited) return rateLimited;
+
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get('reference');
 
-    if (!reference) {
+    if (!reference || typeof reference !== 'string' || reference.length > 100) {
       return NextResponse.json(
-        { error: 'Reference is required' },
+        { error: 'Valid reference is required' },
         { status: 400 }
       );
     }
 
+    await connectDB();
+
+    // Check if already verified (idempotent)
+    const existingOrder = await Order.findOne({ reference });
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (existingOrder.paymentStatus === 'success') {
+      return NextResponse.json({
+        status: true,
+        message: 'Payment already verified',
+      });
+    }
+
+    // Verify with Paystack API
     const response = await paystackService.verifyPayment(reference);
 
     if (response.status && response.data?.status === 'success') {
-      await orderService.updatePaymentStatus(
-        reference,
-        'success'
+      // Verify amount matches
+      const paystackAmount = response.data.amount;
+      if (paystackAmount !== existingOrder.totalPrice) {
+        console.error(
+          `Verify amount mismatch: Paystack=${paystackAmount}, Order=${existingOrder.totalPrice}, ref=${reference}`
+        );
+        await Order.findOneAndUpdate(
+          { reference, paymentStatus: { $ne: 'success' } },
+          { paymentStatus: 'failed' }
+        );
+        return NextResponse.json(
+          { error: 'Payment amount mismatch' },
+          { status: 400 }
+        );
+      }
+
+      // Atomically update only if not already success
+      const updated = await Order.findOneAndUpdate(
+        { reference, paymentStatus: { $ne: 'success' } },
+        { paymentStatus: 'success' },
+        { new: true }
       );
+
+      if (updated) {
+        // Send purchase confirmation email (non-blocking)
+        sendPurchaseConfirmationEmail(updated).catch((err) =>
+          console.error('Failed to send confirmation email:', err)
+        );
+      }
 
       return NextResponse.json({
         status: true,
@@ -30,7 +78,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    await orderService.updatePaymentStatus(reference, 'failed');
+    // Payment not successful at Paystack
+    await Order.findOneAndUpdate(
+      { reference, paymentStatus: { $ne: 'success' } },
+      { paymentStatus: 'failed' }
+    );
 
     return NextResponse.json(
       { error: 'Payment verification failed' },

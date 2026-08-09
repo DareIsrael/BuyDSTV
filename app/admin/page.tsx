@@ -22,6 +22,12 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Pagination state
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderTotalPages, setOrderTotalPages] = useState(1);
+  const [orderTotal, setOrderTotal] = useState(0);
+  const ORDERS_PER_PAGE = 20;
+
   // Product form
   const [dstvPrice, setDstvPrice] = useState('');
   const [dstvWithDishPrice, setDstvWithDishPrice] = useState('');
@@ -48,12 +54,12 @@ export default function AdminPage() {
     }
   }, [status, session, router]);
 
-  const fetchData = async () => {
+  const fetchData = async (page: number = 1) => {
     try {
       const [productsRes, packagesRes, ordersRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/packages'),
-        fetch('/api/orders'),
+        fetch(`/api/orders?page=${page}&limit=${ORDERS_PER_PAGE}`),
       ]);
 
       if (productsRes.ok) {
@@ -78,8 +84,16 @@ export default function AdminPage() {
 
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
-        if (Array.isArray(ordersData)) {
+        if (ordersData && ordersData.orders) {
+          // Paginated response from admin API
+          setOrders(ordersData.orders);
+          setOrderTotal(ordersData.total || 0);
+          setOrderTotalPages(ordersData.totalPages || 1);
+          setOrderPage(ordersData.page || 1);
+        } else if (Array.isArray(ordersData)) {
+          // Fallback for non-paginated response
           setOrders(ordersData);
+          setOrderTotal(ordersData.length);
         }
       }
     } catch (error) {
@@ -207,8 +221,13 @@ export default function AdminPage() {
     );
   }
 
+  const handleOrderPageChange = (newPage: number) => {
+    setOrderPage(newPage);
+    fetchData(newPage);
+  };
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: 'orders', label: 'Orders', count: orders.length },
+    { key: 'orders', label: 'Orders', count: orderTotal },
     { key: 'products', label: 'Products' },
     { key: 'packages', label: 'Packages', count: packages.length },
   ];
@@ -336,6 +355,29 @@ export default function AdminPage() {
                   </div>
                 </motion.div>
               ))
+            )}
+
+            {/* Pagination Controls */}
+            {orderTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 pt-6">
+                <button
+                  onClick={() => handleOrderPageChange(orderPage - 1)}
+                  disabled={orderPage <= 1}
+                  className="px-4 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  ← Previous
+                </button>
+                <span className="text-sm text-gray-400">
+                  Page {orderPage} of {orderTotalPages} ({orderTotal} orders)
+                </span>
+                <button
+                  onClick={() => handleOrderPageChange(orderPage + 1)}
+                  disabled={orderPage >= orderTotalPages}
+                  className="px-4 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  Next →
+                </button>
+              </div>
             )}
           </motion.div>
         )}

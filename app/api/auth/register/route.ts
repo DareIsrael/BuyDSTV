@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db';
 import { Customer } from '@/models/Customer';
+import { sendWelcomeEmail } from '@/lib/email';
+import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, phone, address, password } = await request.json();
+    // Rate limiting
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.register);
+    if (rateLimited) return rateLimited;
+
+    const body = await request.json();
+    const { name, email, phone, address, password } = body;
 
     if (!name || !email || !phone || !address || !password) {
       return NextResponse.json(
@@ -16,9 +23,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof name !== 'string' || typeof email !== 'string' || typeof phone !== 'string' || typeof address !== 'string' || typeof password !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid field types' },
+        { status: 400 }
+      );
+    }
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
+    }
+
+    if (name.length > 100 || email.length > 254 || phone.length > 30 || address.length > 500) {
+      return NextResponse.json(
+        { error: 'Field length exceeds maximum' },
         { status: 400 }
       );
     }
@@ -36,13 +57,18 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const customer = await Customer.create({
-      name,
-      email: email.toLowerCase(),
-      phone,
-      address,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone.trim(),
+      address: address.trim(),
       password: hashedPassword,
-      role:'customer'
+      role: 'customer',
     });
+
+    // Send welcome email (non-blocking — don't fail registration if email fails)
+    sendWelcomeEmail(customer.name, customer.email).catch((err) =>
+      console.error('Failed to send welcome email:', err)
+    );
 
     return NextResponse.json(
       {
