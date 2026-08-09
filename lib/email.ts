@@ -16,8 +16,8 @@ function createTransporter() {
     throw new Error('SMTP service is not configured');
   }
 
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const isSecure = process.env.SMTP_SECURE !== 'false';
+  const port = Number(process.env.SMTP_PORT || 465);
+  const isSecure = process.env.SMTP_SECURE === 'true';
 
   return nodemailer.createTransport({
     host,
