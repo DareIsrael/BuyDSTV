@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const validStatuses = ['processing', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = ['processing', 'On the way', 'delivered', 'cancelled'];
     if (!validStatuses.includes(orderStatus)) {
       return NextResponse.json(
         { error: 'Invalid order status' },

@@ -9,7 +9,7 @@ export interface IOrder {
   package: string;
   totalPrice: number;
   paymentStatus: 'pending' | 'success' | 'failed';
-  orderStatus: 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  orderStatus: 'processing' | 'On the way' | 'delivered' | 'cancelled';
   reference: string;
   createdAt: Date;
   updatedAt: Date;

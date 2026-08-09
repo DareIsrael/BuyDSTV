@@ -176,7 +176,7 @@ export async function sendPurchaseConfirmationEmail(order: IOrder) {
       </div>
 
       <p style="color: #374151; line-height: 1.6;">
-        We'll notify you once your order is shipped. If you have any questions, reach us at
+        We'll notify you once your order is On the way. If you have any questions, reach us at
         <a href="mailto:support@buydstv.com.ng" style="color: #6366f1;">support@buydstv.com.ng</a>
         or WhatsApp: 09164633598.
       </p>
@@ -186,7 +186,7 @@ export async function sendPurchaseConfirmationEmail(order: IOrder) {
       from: getFromAddress(),
       to: order.email,
       subject: `Order Confirmed - ${order.reference}`,
-      text: `Payment Confirmed!\n\nHi ${order.customerName}, your payment has been confirmed and your order is being processed.\n\nOrder Details:\n- Reference: ${order.reference}\n- Product: ${order.product}\n- Package: ${order.package}\n- Delivery Address: ${order.address}\n- Total Paid: ${formatNaira(order.totalPrice)}\n\nWe'll notify you once your order is shipped.\n\nQuestions? Contact support@buydstv.com.ng or WhatsApp: 09164633598.\n\n© ${new Date().getFullYear()} BuyDSTV. All rights reserved.`,
+      text: `Payment Confirmed!\n\nHi ${order.customerName}, your payment has been confirmed and your order is being processed.\n\nOrder Details:\n- Reference: ${order.reference}\n- Product: ${order.product}\n- Package: ${order.package}\n- Delivery Address: ${order.address}\n- Total Paid: ${formatNaira(order.totalPrice)}\n\nWe'll notify you once your order is On the way.\n\nQuestions? Contact support@buydstv.com.ng or WhatsApp: 09164633598.\n\n© ${new Date().getFullYear()} BuyDSTV. All rights reserved.`,
       html,
     });
     console.log(`Purchase confirmation email sent to ${order.email}`);

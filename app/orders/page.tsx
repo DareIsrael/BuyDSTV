@@ -51,7 +51,7 @@ export default function CustomerOrdersPage() {
   const getOrderStatusColor = (status: string) => {
     switch (status) {
       case 'delivered': return 'text-green-400 bg-green-500/10';
-      case 'shipped': return 'text-blue-400 bg-blue-500/10';
+      case 'On the way': return 'text-blue-400 bg-blue-500/10';
       case 'processing': return 'text-yellow-400 bg-yellow-500/10';
       case 'cancelled': return 'text-red-400 bg-red-500/10';
       default: return 'text-gray-400 bg-gray-500/10';

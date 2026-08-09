@@ -206,7 +206,7 @@ export default function AdminPage() {
   const getOrderColor = (status: string) => {
     switch (status) {
       case 'delivered': return 'text-green-400 bg-green-500/10';
-      case 'shipped': return 'text-blue-400 bg-blue-500/10';
+      case 'On the way': return 'text-blue-400 bg-blue-500/10';
       case 'processing': return 'text-yellow-400 bg-yellow-500/10';
       case 'cancelled': return 'text-red-400 bg-red-500/10';
       default: return 'text-gray-400 bg-gray-500/10';
@@ -347,7 +347,7 @@ export default function AdminPage() {
                         className="px-3 py-1.5 bg-dark border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-primary"
                       >
                         <option value="processing">Processing</option>
-                        <option value="shipped">Shipped</option>
+                        <option value="On the way">On the way</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
