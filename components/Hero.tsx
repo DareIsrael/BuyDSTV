@@ -226,17 +226,6 @@ export const Hero: React.FC = () => {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-1">
-            {/* Call Link */}
-            <a
-              href="tel:09164633598"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900/80 hover:bg-gray-800 border border-gray-700/60 text-gray-200 hover:text-white text-xs sm:text-sm transition-all shadow-md hover:scale-105"
-            >
-              <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.11-.27c1.21.49 2.53.76 3.88.76a1 1 0 011 1v3.5a1 1 0 01-1 1A17.93 17.93 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.35.27 2.67.76 3.88a1 1 0 01-.27 1.11l-2.2 2.2z" />
-              </svg>
-              <span>09164633598</span>
-            </a>
-
             {/* WhatsApp Chat Button */}
             <a
               href="https://wa.me/2349164633598"
