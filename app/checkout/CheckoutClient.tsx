@@ -156,6 +156,12 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
                 >
                   Pay Now — {formatPrice(totalPrice)}
                 </Button>
+                <p className="text-center text-xs text-gray-400 mt-2 flex items-center justify-center gap-1.5">
+                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Total payment includes delivery fee</span>
+                </p>
               </div>
             </div>
           </div>

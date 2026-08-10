@@ -32,8 +32,11 @@ export const PriceSummary: React.FC<PriceSummaryProps> = ({
             <span className="font-semibold">{formatPrice(packagePrice)}</span>
           </div>
         )}
-        <div className="flex justify-between pt-4">
-          <span className="text-xl font-bold">Total</span>
+        <div className="flex justify-between items-end pt-4">
+          <div>
+            <span className="text-xl font-bold block">Total</span>
+            <span className="text-xs text-gray-400 font-normal">Includes delivery fee</span>
+          </div>
           <span className="text-2xl font-bold text-primary">
             {formatPrice(totalPrice)}
           </span>
