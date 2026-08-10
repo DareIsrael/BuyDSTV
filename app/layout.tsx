@@ -31,6 +31,7 @@ export default function RootLayout({
           <main className="min-h-screen">{children}</main>
           <Footer />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
