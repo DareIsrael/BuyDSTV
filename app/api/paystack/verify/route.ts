@@ -66,10 +66,11 @@ export async function GET(request: NextRequest) {
       );
 
       if (updated) {
-        // Send purchase confirmation email (non-blocking)
-        sendPurchaseConfirmationEmail(updated).catch((err) =>
-          console.error('Failed to send confirmation email:', err)
-        );
+        try {
+          await sendPurchaseConfirmationEmail(updated);
+        } catch (err) {
+          console.error('Failed to send confirmation email:', err);
+        }
       }
 
       return NextResponse.json({

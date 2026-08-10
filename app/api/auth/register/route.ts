@@ -65,10 +65,12 @@ export async function POST(request: NextRequest) {
       role: 'customer',
     });
 
-    // Send welcome email (non-blocking — don't fail registration if email fails)
-    sendWelcomeEmail(customer.name, customer.email).catch((err) =>
-      console.error('Failed to send welcome email:', err)
-    );
+    // Send welcome email (safely awaited so serverless functions stay alive until dispatch finishes)
+    try {
+      await sendWelcomeEmail(customer.name, customer.email);
+    } catch (err) {
+      console.error('Failed to send welcome email:', err);
+    }
 
     return NextResponse.json(
       {

@@ -90,10 +90,11 @@ export async function POST(request: NextRequest) {
     );
 
     if (updated) {
-      // Send purchase confirmation email (non-blocking for webhook response)
-      sendPurchaseConfirmationEmail(updated).catch((err) =>
-        console.error('Failed to send purchase confirmation email:', err)
-      );
+      try {
+        await sendPurchaseConfirmationEmail(updated);
+      } catch (err) {
+        console.error('Failed to send purchase confirmation email:', err);
+      }
     }
 
     return NextResponse.json({ message: 'Webhook processed' }, { status: 200 });
