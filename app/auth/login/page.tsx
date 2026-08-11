@@ -45,8 +45,11 @@ function LoginContent() {
 
   const handleCloseModal = () => {
     setShowSuccessModal(false);
-    router.push(callbackUrl);
-    router.refresh();
+    window.location.href = callbackUrl;
+  };
+
+  const handleNavigateProduct = (product: string) => {
+    window.location.href = `/checkout?product=${product}`;
   };
 
   const product = searchParams.get('product');
@@ -90,8 +93,8 @@ function LoginContent() {
             {/* Product Buttons with front arrow */}
             <div className="space-y-3 pt-1">
               <button
-                onClick={() => { setShowSuccessModal(false); router.push('/checkout?product=dstv'); }}
-                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-primary/10 via-dark-card to-dark-card hover:from-primary/20 border border-primary/40 hover:border-primary rounded-xl text-white font-medium text-sm transition-all group shadow-md"
+                onClick={() => handleNavigateProduct('dstv')}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-primary/10 via-dark-card to-dark-card hover:from-primary/20 border border-primary/40 hover:border-primary rounded-xl text-white font-medium text-sm transition-all group shadow-md cursor-pointer"
               >
                 <span className="flex items-center gap-3">
                   <svg className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,8 +105,8 @@ function LoginContent() {
               </button>
 
               <button
-                onClick={() => { setShowSuccessModal(false); router.push('/checkout?product=dstv-with-dish'); }}
-                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-secondary/10 via-dark-card to-dark-card hover:from-secondary/20 border border-secondary/40 hover:border-secondary rounded-xl text-white font-medium text-sm transition-all group shadow-md"
+                onClick={() => handleNavigateProduct('dstv-with-dish')}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-secondary/10 via-dark-card to-dark-card hover:from-secondary/20 border border-secondary/40 hover:border-secondary rounded-xl text-white font-medium text-sm transition-all group shadow-md cursor-pointer"
               >
                 <span className="flex items-center gap-3">
                   <svg className="w-4 h-4 text-secondary shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -114,8 +117,8 @@ function LoginContent() {
               </button>
 
               <button
-                onClick={() => { setShowSuccessModal(false); router.push('/checkout?product=gotv'); }}
-                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-blue-500/10 via-dark-card to-dark-card hover:from-blue-500/20 border border-blue-500/40 hover:border-blue-500 rounded-xl text-white font-medium text-sm transition-all group shadow-md"
+                onClick={() => handleNavigateProduct('gotv')}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-blue-500/10 via-dark-card to-dark-card hover:from-blue-500/20 border border-blue-500/40 hover:border-blue-500 rounded-xl text-white font-medium text-sm transition-all group shadow-md cursor-pointer"
               >
                 <span className="flex items-center gap-3">
                   <svg className="w-4 h-4 text-blue-400 shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">

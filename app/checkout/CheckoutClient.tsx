@@ -86,7 +86,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.back()}
+          onClick={() => router.push('/')}
           className="mb-8"
         >
           ← Back
@@ -96,7 +96,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
           <div className="space-y-6">
             {/* Customer Info */}
             <div className="bg-dark-card rounded-xl p-6 border border-gray-800">
-              <h2 className="text-xl font-bold mb-4 text-white">Customer Details</h2>
+              <h2 className="text-xl font-bold mb-4 text-white">Activation Details</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Name</span>
