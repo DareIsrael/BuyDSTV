@@ -69,8 +69,8 @@ function PaymentVerifyContent() {
           </div>
           <h1 className="text-2xl font-bold text-green-500 mb-2">Payment Successful!</h1>
           <p className="text-gray-400 mb-8">{activeMessage}</p>
-          <Button onClick={() => router.push('/')} className="w-full">
-            Back to Home
+          <Button onClick={() => router.push('/orders')} className="w-full">
+            View My Orders
           </Button>
         </>
       )}

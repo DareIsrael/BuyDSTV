@@ -17,6 +17,7 @@ function LoginContent() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +34,7 @@ function LoginContent() {
       if (result?.error) {
         setError(result.error);
       } else {
-        router.push(callbackUrl);
-        router.refresh();
+        setShowSuccessModal(true);
       }
     } catch {
       setError('An error occurred. Please try again.');
@@ -43,13 +43,101 @@ function LoginContent() {
     }
   };
 
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    router.push(callbackUrl);
+    router.refresh();
+  };
+
   const product = searchParams.get('product');
   const registerUrl = product
     ? `/auth/register?product=${product}&callbackUrl=${encodeURIComponent(callbackUrl)}`
     : '/auth/register';
 
   return (
-    <div className="bg-dark-card rounded-2xl p-8 border border-gray-800 shadow-2xl">
+    <div className="bg-dark-card rounded-2xl p-8 border border-gray-800 shadow-2xl relative">
+      {/* Login Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-dark-card rounded-2xl p-8 border border-gray-800 shadow-2xl max-w-md w-full text-center space-y-6 relative"
+          >
+            {/* Close Modal "X" Button */}
+            <button
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-800/80 transition-colors"
+              aria-label="Close modal"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="w-16 h-16 bg-green-500/10 border border-green-500/30 rounded-full flex items-center justify-center mx-auto text-green-400">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-white">Login Successful</h2>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                You have successfully logged in. Select a product below to continue:
+              </p>
+            </div>
+
+            {/* Product Buttons with front arrow */}
+            <div className="space-y-3 pt-1">
+              <button
+                onClick={() => { setShowSuccessModal(false); router.push('/checkout?product=dstv'); }}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-primary/10 via-dark-card to-dark-card hover:from-primary/20 border border-primary/40 hover:border-primary rounded-xl text-white font-medium text-sm transition-all group shadow-md"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span>Buy DSTV Decoder Only</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setShowSuccessModal(false); router.push('/checkout?product=dstv-with-dish'); }}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-secondary/10 via-dark-card to-dark-card hover:from-secondary/20 border border-secondary/40 hover:border-secondary rounded-xl text-white font-medium text-sm transition-all group shadow-md"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="w-4 h-4 text-secondary shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span>Buy DSTV+Dish</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setShowSuccessModal(false); router.push('/checkout?product=gotv'); }}
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-blue-500/10 via-dark-card to-dark-card hover:from-blue-500/20 border border-blue-500/40 hover:border-blue-500 rounded-xl text-white font-medium text-sm transition-all group shadow-md"
+              >
+                <span className="flex items-center gap-3">
+                  <svg className="w-4 h-4 text-blue-400 shrink-0 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span>Buy GOTV+Antenna</span>
+                </span>
+              </button>
+
+              <button
+                onClick={handleCloseModal}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-semibold text-sm rounded-xl transition-all shadow-lg mt-3 cursor-pointer"
+              >
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span>Go to Home</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">
           <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
