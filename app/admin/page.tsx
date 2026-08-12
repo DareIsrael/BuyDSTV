@@ -10,7 +10,30 @@ import { IPackage } from '@/types/package';
 import { IOrder } from '@/types/order';
 import { formatPrice } from '@/lib/utils';
 
-type Tab = 'orders' | 'products' | 'packages';
+type Tab = 'orders' | 'products' | 'packages' | 'customers';
+
+interface SafeCustomer {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  orderCount?: number;
+}
+
+interface CustomerOrder {
+  _id: string;
+  product: string;
+  package: string;
+  totalPrice: number;
+  paymentStatus: string;
+  orderStatus: string;
+  reference: string;
+  createdAt: string;
+}
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -27,6 +50,19 @@ export default function AdminPage() {
   const [orderTotalPages, setOrderTotalPages] = useState(1);
   const [orderTotal, setOrderTotal] = useState(0);
   const ORDERS_PER_PAGE = 20;
+
+  // Customer state
+  const [customers, setCustomers] = useState<SafeCustomer[]>([]);
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerTotalPages, setCustomerTotalPages] = useState(1);
+  const [customerTotal, setCustomerTotal] = useState(0);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSort, setCustomerSort] = useState<'newest' | 'oldest'>('newest');
+  const [selectedCustomer, setSelectedCustomer] = useState<SafeCustomer | null>(null);
+  const [selectedCustomerOrders, setSelectedCustomerOrders] = useState<CustomerOrder[]>([]);
+  const [isCustomerDetailOpen, setIsCustomerDetailOpen] = useState(false);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+  const CUSTOMERS_PER_PAGE = 20;
 
   // Product form
   const [dstvPrice, setDstvPrice] = useState('');
@@ -51,6 +87,7 @@ export default function AdminPage() {
         return;
       }
       fetchData();
+      fetchCustomers();
     }
   }, [status, session, router]);
 
@@ -226,8 +263,71 @@ export default function AdminPage() {
     fetchData(newPage);
   };
 
+  // --- Customer functions ---
+  const fetchCustomers = async (page: number = 1, search?: string, sort?: 'newest' | 'oldest') => {
+    setIsLoadingCustomers(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(CUSTOMERS_PER_PAGE),
+        sort: sort || customerSort,
+      });
+      if (search !== undefined ? search : customerSearch) {
+        params.set('search', search !== undefined ? search : customerSearch);
+      }
+      const res = await fetch(`/api/admin/customers?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCustomers(data.customers || []);
+        setCustomerTotal(data.total || 0);
+        setCustomerTotalPages(data.totalPages || 1);
+        setCustomerPage(data.page || 1);
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    } finally {
+      setIsLoadingCustomers(false);
+    }
+  };
+
+  const handleCustomerSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchCustomers(1, customerSearch);
+  };
+
+  const handleCustomerPageChange = (newPage: number) => {
+    setCustomerPage(newPage);
+    fetchCustomers(newPage);
+  };
+
+  const handleCustomerSortChange = (newSort: 'newest' | 'oldest') => {
+    setCustomerSort(newSort);
+    fetchCustomers(1, customerSearch, newSort);
+  };
+
+  const openCustomerDetail = async (customer: SafeCustomer) => {
+    setSelectedCustomer(customer);
+    setIsCustomerDetailOpen(true);
+    try {
+      const res = await fetch(`/api/admin/customers?id=${customer._id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedCustomerOrders(data.orders || []);
+      }
+    } catch (error) {
+      console.error('Error fetching customer details:', error);
+    }
+  };
+
+  const closeCustomerDetail = () => {
+    setIsCustomerDetailOpen(false);
+    setSelectedCustomer(null);
+    setSelectedCustomerOrders([]);
+  };
+
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'orders', label: 'Orders', count: orderTotal },
+    { key: 'customers', label: 'Customers', count: customerTotal },
     { key: 'products', label: 'Products' },
     { key: 'packages', label: 'Packages', count: packages.length },
   ];
@@ -242,7 +342,7 @@ export default function AdminPage() {
         >
           Admin Dashboard
         </motion.h1>
-        <p className="text-gray-400 mb-8">Manage orders, products, and packages</p>
+        <p className="text-gray-400 mb-8">Manage orders, customers, products, and packages</p>
 
         {message && (
           <motion.div
@@ -508,6 +608,218 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Customers Tab */}
+        {activeTab === 'customers' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            {/* Search & Sort Controls */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <form onSubmit={handleCustomerSearch} className="flex gap-2 flex-1">
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="Search by name or email..."
+                  className="flex-1 px-4 py-2.5 bg-dark-card border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary text-sm"
+                />
+                <Button type="submit" size="sm" isLoading={isLoadingCustomers}>
+                  Search
+                </Button>
+                {customerSearch && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCustomerSearch('');
+                      fetchCustomers(1, '');
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </form>
+              <select
+                value={customerSort}
+                onChange={(e) => handleCustomerSortChange(e.target.value as 'newest' | 'oldest')}
+                className="px-3 py-2.5 bg-dark-card border border-gray-700 rounded-xl text-sm text-white focus:outline-none focus:border-primary"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </div>
+
+            {/* Customer List */}
+            {isLoadingCustomers && customers.length === 0 ? (
+              <div className="bg-dark-card rounded-xl p-12 border border-gray-800 text-center">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              </div>
+            ) : customers.length === 0 ? (
+              <div className="bg-dark-card rounded-xl p-12 border border-gray-800 text-center">
+                <p className="text-gray-400">
+                  {customerSearch ? 'No customers match your search.' : 'No customers yet.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {customers.map((customer, index) => (
+                  <motion.div
+                    key={customer._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="bg-dark-card rounded-xl p-5 border border-gray-800 hover:border-gray-700 transition-colors cursor-pointer"
+                    onClick={() => openCustomerDetail(customer)}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <h3 className="text-base font-semibold text-white">{customer.name}</h3>
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                          <p className="text-gray-400">
+                            <span className="text-gray-500">Email:</span> {customer.email}
+                          </p>
+                          <p className="text-gray-400">
+                            <span className="text-gray-500">Phone:</span> {customer.phone}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-gray-400">
+                          {customer.orderCount || 0} order{customer.orderCount !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-gray-500">
+                          {new Date(customer.createdAt).toLocaleDateString('en-NG', {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {customerTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => handleCustomerPageChange(customerPage - 1)}
+                  disabled={customerPage <= 1}
+                  className="px-4 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  ← Previous
+                </button>
+                <span className="text-sm text-gray-400">
+                  Page {customerPage} of {customerTotalPages} ({customerTotal} customers)
+                </span>
+                <button
+                  onClick={() => handleCustomerPageChange(customerPage + 1)}
+                  disabled={customerPage >= customerTotalPages}
+                  className="px-4 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+
+            {/* Customer Detail Modal */}
+            {isCustomerDetailOpen && selectedCustomer && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeCustomerDetail} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="relative bg-dark-card border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+                >
+                  <div className="sticky top-0 bg-dark-card border-b border-gray-800 p-5 flex items-center justify-between rounded-t-2xl">
+                    <h2 className="text-xl font-bold text-white">Customer Details</h2>
+                    <button
+                      onClick={closeCustomerDetail}
+                      className="text-gray-400 hover:text-white text-2xl leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="p-5 space-y-6">
+                    {/* Customer Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Name</p>
+                        <p className="text-white">{selectedCustomer.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Email</p>
+                        <p className="text-white">{selectedCustomer.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Phone</p>
+                        <p className="text-white">{selectedCustomer.phone}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Address</p>
+                        <p className="text-white">{selectedCustomer.address}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Registered</p>
+                        <p className="text-white">
+                          {new Date(selectedCustomer.createdAt).toLocaleDateString('en-NG', {
+                            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Total Orders</p>
+                        <p className="text-white">{selectedCustomer.orderCount || 0}</p>
+                      </div>
+                    </div>
+
+                    {/* Customer Orders */}
+                    <div>
+                      <h3 className="text-base font-semibold text-white mb-3">Order History</h3>
+                      {selectedCustomerOrders.length === 0 ? (
+                        <p className="text-gray-500 text-sm py-4 text-center">No orders found.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {selectedCustomerOrders.map((order) => (
+                            <div
+                              key={order._id}
+                              className="bg-dark rounded-xl p-4 border border-gray-800"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                <h4 className="text-sm font-medium text-white">
+                                  {order.product} — {order.package}
+                                </h4>
+                                <p className="text-sm font-bold text-primary">{formatPrice(order.totalPrice)}</p>
+                              </div>
+                              <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-400">
+                                <span>Ref: {order.reference}</span>
+                                <span className={`px-1.5 py-0.5 rounded-full font-medium ${getPaymentColor(order.paymentStatus)}`}>
+                                  {order.paymentStatus}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded-full font-medium ${getOrderColor(order.orderStatus)}`}>
+                                  {order.orderStatus}
+                                </span>
+                                <span>
+                                  {new Date(order.createdAt).toLocaleDateString('en-NG', {
+                                    year: 'numeric', month: 'short', day: 'numeric',
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
           </motion.div>
         )}
       </div>
