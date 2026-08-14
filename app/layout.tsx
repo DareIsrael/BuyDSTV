@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     siteName: 'BuyDSTV',
     title: 'BuyDSTV — Buy DSTV & GOTV Decoders Online in Nigeria',
     description:
-      'Shop original DSTV and GOTV decoders with subscription packages. Secure payment, fast delivery across Nigeria.',
+      'Shop DSTV and GOTV decoders with subscription packages. Secure payment, fast delivery across Nigeria.',
     images: [
       {
         url: '/BuyDSTV_LOGO.png',
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: 'summary',
     title: 'BuyDSTV — Buy DSTV & GOTV Decoders Online in Nigeria',
     description:
-      'Shop original DSTV and GOTV decoders with subscription packages. Secure payment, fast delivery across Nigeria.',
+      'Shop  DSTV and GOTV decoders with subscription packages. Secure payment, fast delivery across Nigeria.',
     images: ['/BuyDSTV_LOGO.png'],
   },
   robots: {
