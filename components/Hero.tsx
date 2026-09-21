@@ -103,29 +103,124 @@
 
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './Button';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 
+interface ProductItem {
+  id: 'dstv' | 'dstv-with-dish' | 'dstv-explora' | 'gotv';
+  name: string;
+  badge?: string;
+  tagline: string;
+  summary: string;
+  inTheBox: string[];
+  bestFor: string;
+  features: string[];
+}
+
+const PRODUCTS_DATA: ProductItem[] = [
+  {
+    id: 'dstv',
+    name: 'DSTV Decoder Only',
+    badge: 'Popular',
+    tagline: 'Standard HD Satellite Decoder',
+    summary: 'High-definition satellite decoder ideal for replacing or upgrading an existing setup.',
+    inTheBox: [
+      'DStv HD Decoder Unit',
+      'DStv Smartcard',
+      'Remote Control (with Batteries)',
+      'HDMI Cable & Power Adapter',
+    ],
+    bestFor: 'Customers who already have a functional satellite dish and LNB installed.',
+    features: [
+      'Crisp 1080p High-Definition (HD) Video Quality',
+      'Dolby Digital 5.1 Surround Sound Support',
+      '7-Day Interactive TV Program Guide (EPG)',
+      'Parental Control & Channel Locking',
+    ],
+  },
+  {
+    id: 'dstv-with-dish',
+    name: 'DSTV + Dish Kit',
+    badge: 'Full Setup',
+    tagline: 'Complete Satellite Dish & Decoder Kit',
+    summary: 'Everything required for a brand new DStv installation from scratch.',
+    inTheBox: [
+      'DStv HD Decoder & Smartcard',
+      '60cm Satellite Dish',
+      'Single LNB Receiver',
+      'Coaxial Cable & Wall Mounting Brackets',
+    ],
+    bestFor: 'New subscribers or locations without an existing satellite dish setup.',
+    features: [
+      'Full satellite hardware kit included in the package',
+      'Optimized dish kit for maximum signal strength',
+      'Seamless multi-channel HD playback',
+      'Ready for immediate technician installation',
+    ],
+  },
+  {
+    id: 'dstv-explora',
+    name: 'DSTV Explora',
+    badge: 'Premium',
+    tagline: 'Ultimate Recording & Streaming Decoder',
+    summary: 'The flagship decoder with recording, live TV control and internet streaming.',
+    inTheBox: [
+      'DStv Explora / Ultra Decoder Unit',
+      'Smart Remote Control & Batteries',
+      'High-Speed HDMI Cable',
+      'Power Adapter & Quick Guide',
+    ],
+    bestFor: 'Users who want to pause live TV, record movies/sports & Catch Up.',
+    features: [
+      'Pause, Rewind & Fast Forward Live TV (Up to 2 Hours)',
+      'Record up to 110 Hours of HD Content',
+      'Built-in Wi-Fi for DStv Catch Up Plus',
+      'Supports 4K / Ultra High Definition Streaming',
+    ],
+  },
+  {
+    id: 'gotv',
+    name: 'GOTV + Antenna Kit',
+    badge: 'Budget Friendly',
+    tagline: 'Digital Terrestrial TV & GOtenna',
+    summary: 'Affordable plug-and-play digital TV decoder with outdoor GOtenna included.',
+    inTheBox: [
+      'GOtv HD Digital Decoder Unit',
+      'GOtenna Outdoor Antenna',
+      'Signal Cable & Remote Control',
+      'Power Adapter',
+    ],
+    bestFor: 'Everyday digital TV entertainment without requiring a satellite dish.',
+    features: [
+      'Quick plug-and-play setup without dish mounting',
+      'High-definition digital signal quality',
+      'Wide regional network coverage',
+      'Pocket-friendly monthly package subscriptions',
+    ],
+  },
+];
+
 export const Hero: React.FC = () => {
   const router = useRouter();
   const { data: session } = useSession();
   const [isMobile, setIsMobile] = useState(false);
+  const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleBuy = (product: 'dstv' | 'gotv' | 'dstv-with-dish') => {
+  const handleBuy = (product: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora') => {
     const checkoutUrl = `/checkout?product=${product}`;
     if (session) {
       router.push(checkoutUrl);
@@ -134,17 +229,21 @@ export const Hero: React.FC = () => {
     }
   };
 
+  const toggleDetails = (id: string) => {
+    setOpenDetails((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Select video URL based on device
   const videoUrl = isMobile
-    ? "https://res.cloudinary.com/dveill0ji/video/upload/v1774943918/mobile5_a1uhpo.mp4"
-    : "https://res.cloudinary.com/dveill0ji/video/upload/v1774876119/DstvMotion_jpswci.mp4";
+    ? 'https://res.cloudinary.com/dveill0ji/video/upload/v1774943918/mobile5_a1uhpo.mp4'
+    : 'https://res.cloudinary.com/dveill0ji/video/upload/v1774876119/DstvMotion_jpswci.mp4';
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Video Background */}
       <div className="absolute inset-0 w-full h-full">
         <video
-          key={videoUrl} // Force re-render when video URL changes
+          key={videoUrl}
           autoPlay
           loop
           muted
@@ -159,16 +258,16 @@ export const Hero: React.FC = () => {
         </video>
       </div>
 
-      {/* Overlay - Optimized for both mobile and desktop */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/95 md:from-dark/80 md:via-dark/60 md:to-dark/90" />
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/75 to-black/95 md:from-dark/85 md:via-dark/75 md:to-dark/95" />
 
       {/* Content */}
-      <div className="relative z-10 text-center px-4 pt-24 pb-8 sm:pt-28 md:py-16 w-full">
+      <div className="relative z-10 text-center px-4 pt-24 pb-12 sm:pt-28 md:py-20 w-full max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto"
+          className="max-w-4xl mx-auto mb-10"
         >
           <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold mb-4 md:mb-6 leading-tight">
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent block">
@@ -178,51 +277,61 @@ export const Hero: React.FC = () => {
               At Your Fingertips
             </span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl text-gray-200 mb-8 md:mb-12 max-w-2xl mx-auto px-2 leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto px-2 leading-relaxed">
             Get the best DSTV and GOTV decoders with amazing subscription packages.
             Upgrade your entertainment experience today!
           </p>
         </motion.div>
 
+        {/* Product Cards Grid */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left px-2 sm:px-4 mb-10"
         >
-          <Button
-            size="lg"
-            onClick={() => handleBuy('dstv')}
-            className="w-full sm:w-auto min-w-[200px]"
-          >
-            Buy DSTV Decoder Only
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => handleBuy('dstv-with-dish')}
-            className="w-full sm:w-auto min-w-[200px]"
-          >
-            Buy DSTV+Dish
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => handleBuy('gotv')}
-            className="w-full sm:w-auto min-w-[200px]"
-          >
-            Buy GOTV+Antenna
-          </Button>
+          {PRODUCTS_DATA.map((product) => {
+            return (
+              <div
+                key={product.id}
+                className="bg-black/70 backdrop-blur-md border border-gray-800 hover:border-primary/50 transition-all rounded-2xl p-5 flex flex-col justify-between shadow-2xl relative overflow-hidden"
+              >
+                {/* Badge */}
+                {product.badge && (
+                  <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-primary/20 text-primary border border-primary/40">
+                    {product.badge}
+                  </span>
+                )}
+
+                <div>
+                  <h3 className="text-lg font-bold text-white pr-16">{product.name}</h3>
+                  <p className="text-xs text-primary font-medium mt-1 mb-2">{product.tagline}</p>
+                  <p className="text-xs text-gray-300 leading-relaxed mb-4">{product.summary}</p>
+                </div>
+
+                <div className="pt-2 border-t border-gray-800/80">
+                  <Button
+                    size="md"
+                    onClick={() => handleBuy(product.id)}
+                    className="w-full font-semibold text-xs sm:text-sm py-2.5"
+                  >
+                    Buy {product.name}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </motion.div>
 
+        {/* Support & Contact Footer inside Hero */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
-          className="mt-10 md:mt-14 space-y-4 px-4"
+          className="space-y-4 px-4"
         >
           <p className="text-gray-300 text-xs sm:text-sm font-medium tracking-wide uppercase">
-            Fast Delivery • Secure Payment • 24/7 Support
+            Fast Nationwide Delivery • Instant Activation • 24/7 Support
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-1">

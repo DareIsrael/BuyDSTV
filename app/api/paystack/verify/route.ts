@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       const updated = await Order.findOneAndUpdate(
         { reference, paymentStatus: { $ne: 'success' } },
         { paymentStatus: 'success' },
-        { new: true }
+        { returnDocument: 'after' }
       );
 
       if (updated) {

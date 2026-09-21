@@ -8,9 +8,11 @@ import { Button } from '@/components/Button';
 import { IProduct } from '@/types/product';
 import { IPackage } from '@/types/package';
 import { IOrder } from '@/types/order';
+import { IInstallation } from '@/types/installation';
 import { formatPrice } from '@/lib/utils';
+import { getVisiblePageNumbers } from '@/lib/pagination';
 
-type Tab = 'orders' | 'products' | 'packages' | 'customers';
+type Tab = 'orders' | 'products' | 'packages' | 'installation' | 'customers';
 
 interface SafeCustomer {
   _id: string;
@@ -33,15 +35,17 @@ interface CustomerOrder {
   orderStatus: string;
   reference: string;
   createdAt: string;
+  installation?: boolean;
+  installationPrice?: number;
 }
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('orders');
-  const [_products, setProducts] = useState<IProduct[]>([]);
   const [packages, setPackages] = useState<IPackage[]>([]);
   const [orders, setOrders] = useState<IOrder[]>([]);
+  const [installations, setInstallations] = useState<IInstallation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -49,7 +53,8 @@ export default function AdminPage() {
   const [orderPage, setOrderPage] = useState(1);
   const [orderTotalPages, setOrderTotalPages] = useState(1);
   const [orderTotal, setOrderTotal] = useState(0);
-  const ORDERS_PER_PAGE = 20;
+  const [orderPaymentStatus, setOrderPaymentStatus] = useState<'success' | 'pending' | 'failed'>('success');
+  const ORDERS_PER_PAGE = 10;
 
   // Customer state
   const [customers, setCustomers] = useState<SafeCustomer[]>([]);
@@ -62,22 +67,34 @@ export default function AdminPage() {
   const [selectedCustomerOrders, setSelectedCustomerOrders] = useState<CustomerOrder[]>([]);
   const [isCustomerDetailOpen, setIsCustomerDetailOpen] = useState(false);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
-  const CUSTOMERS_PER_PAGE = 20;
+  const [customerOrderPage, setCustomerOrderPage] = useState(1);
+  const [customerOrderTotalPages, setCustomerOrderTotalPages] = useState(1);
+  const [customerOrderTotal, setCustomerOrderTotal] = useState(0);
+  const CUSTOMERS_PER_PAGE = 10;
 
   // Product form
   const [dstvPrice, setDstvPrice] = useState('');
   const [dstvWithDishPrice, setDstvWithDishPrice] = useState('');
+  const [dstvExploraPrice, setDstvExploraPrice] = useState('');
   const [gotvPrice, setGotvPrice] = useState('');
 
   // Package form
   const [pkgName, setPkgName] = useState('');
   const [pkgPrice, setPkgPrice] = useState('');
-  const [pkgType, setPkgType] = useState<'dstv' | 'gotv' | 'dstv-with-dish'>('dstv');
+  const [pkgType, setPkgType] = useState<'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora'>('dstv');
+
+  // Package edit state
+  const [editingPkgId, setEditingPkgId] = useState<string | null>(null);
+  const [editPkgName, setEditPkgName] = useState('');
+  const [editPkgPrice, setEditPkgPrice] = useState('');
+
+  // Installation form
+  const [instProductType, setInstProductType] = useState<'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora'>('dstv');
+  const [instPrice, setInstPrice] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login');
-    //   callbackUrl=/admin
       return;
     }
     if (status === 'authenticated') {
@@ -88,26 +105,34 @@ export default function AdminPage() {
       }
       fetchData();
       fetchCustomers();
+      fetchInstallations();
     }
+  // The initial dashboard load is intentionally driven by authentication
+  // changes; adding the recreated fetch callbacks would trigger repeat loads.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, session, router]);
 
-  const fetchData = async (page: number = 1) => {
+  const fetchData = async (
+    page: number = 1,
+    paymentStatus: 'success' | 'pending' | 'failed' = orderPaymentStatus
+  ) => {
     try {
       const [productsRes, packagesRes, ordersRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/packages'),
-        fetch(`/api/orders?page=${page}&limit=${ORDERS_PER_PAGE}`),
+        fetch(`/api/orders?page=${page}&limit=${ORDERS_PER_PAGE}&paymentStatus=${paymentStatus}`),
       ]);
 
       if (productsRes.ok) {
         const productsData = await productsRes.json();
         if (Array.isArray(productsData)) {
-          setProducts(productsData);
           const dstv = productsData.find((p: IProduct) => p.type === 'dstv');
           const dstvWithDish = productsData.find((p: IProduct) => p.type === 'dstv-with-dish');
+          const dstvExplora = productsData.find((p: IProduct) => p.type === 'dstv-explora');
           const gotv = productsData.find((p: IProduct) => p.type === 'gotv');
           setDstvPrice(dstv?.price ? String(dstv.price / 100) : '0');
           setDstvWithDishPrice(dstvWithDish?.price ? String(dstvWithDish.price / 100) : '0');
+          setDstvExploraPrice(dstvExplora?.price ? String(dstvExplora.price / 100) : '0');
           setGotvPrice(gotv?.price ? String(gotv.price / 100) : '0');
         }
       }
@@ -122,19 +147,31 @@ export default function AdminPage() {
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json();
         if (ordersData && ordersData.orders) {
-          // Paginated response from admin API
           setOrders(ordersData.orders);
           setOrderTotal(ordersData.total || 0);
           setOrderTotalPages(ordersData.totalPages || 1);
           setOrderPage(ordersData.page || 1);
         } else if (Array.isArray(ordersData)) {
-          // Fallback for non-paginated response
           setOrders(ordersData);
           setOrderTotal(ordersData.length);
         }
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+    }
+  };
+
+  const fetchInstallations = async () => {
+    try {
+      const res = await fetch('/api/installations');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setInstallations(data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching installations:', error);
     }
   };
 
@@ -150,6 +187,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           dstvPrice: Number(dstvPrice),
           dstvWithDishPrice: Number(dstvWithDishPrice),
+          dstvExploraPrice: Number(dstvExploraPrice),
           gotvPrice: Number(gotvPrice),
         }),
       });
@@ -214,6 +252,115 @@ export default function AdminPage() {
     }
   };
 
+  const startEditPackage = (pkg: IPackage) => {
+    setEditingPkgId(pkg._id);
+    setEditPkgName(pkg.name);
+    setEditPkgPrice(String(pkg.price / 100));
+  };
+
+  const cancelEditPackage = () => {
+    setEditingPkgId(null);
+    setEditPkgName('');
+    setEditPkgPrice('');
+  };
+
+  const saveEditPackage = async (id: string) => {
+    if (!editPkgName || !editPkgPrice) return;
+
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/packages?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editPkgName,
+          price: Number(editPkgPrice),
+        }),
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Package updated!' });
+        setEditingPkgId(null);
+        fetchData();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to update package.' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const upsertInstallation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!instPrice) return;
+
+    setIsLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch('/api/installations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productType: instProductType,
+          price: Number(instPrice),
+          isActive: true,
+        }),
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Installation price saved!' });
+        setInstPrice('');
+        fetchInstallations();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to save installation price.' });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'An error occurred.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleInstallationActive = async (inst: IInstallation) => {
+    try {
+      const response = await fetch('/api/installations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productType: inst.productType,
+          price: inst.price / 100, // API expects naira, converts to kobo
+          isActive: !inst.isActive,
+        }),
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: `Installation ${!inst.isActive ? 'enabled' : 'disabled'}!` });
+        fetchInstallations();
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to toggle installation.' });
+    }
+  };
+
+  const deleteInstallation = async (id: string) => {
+    if (!confirm('Delete this installation option?')) return;
+
+    try {
+      const response = await fetch(`/api/installations?id=${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Installation deleted!' });
+        fetchInstallations();
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to delete.' });
+    }
+  };
+
   const updateOrderStatus = async (reference: string, orderStatus: string) => {
     try {
       const response = await fetch('/api/orders', {
@@ -250,6 +397,16 @@ export default function AdminPage() {
     }
   };
 
+  const getProductTypeLabel = (type: string) => {
+    switch (type) {
+      case 'dstv': return 'DSTV Only';
+      case 'dstv-with-dish': return 'DSTV + Dish';
+      case 'dstv-explora': return 'DSTV Explora';
+      case 'gotv': return 'GOTV';
+      default: return type.toUpperCase();
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark flex items-center justify-center">
@@ -261,6 +418,12 @@ export default function AdminPage() {
   const handleOrderPageChange = (newPage: number) => {
     setOrderPage(newPage);
     fetchData(newPage);
+  };
+
+  const handleOrderPaymentStatusChange = (paymentStatus: 'success' | 'pending' | 'failed') => {
+    setOrderPaymentStatus(paymentStatus);
+    setOrderPage(1);
+    fetchData(1, paymentStatus);
   };
 
   // --- Customer functions ---
@@ -305,14 +468,18 @@ export default function AdminPage() {
     fetchCustomers(1, customerSearch, newSort);
   };
 
-  const openCustomerDetail = async (customer: SafeCustomer) => {
+  const openCustomerDetail = async (customer: SafeCustomer, page: number = 1) => {
     setSelectedCustomer(customer);
     setIsCustomerDetailOpen(true);
     try {
-      const res = await fetch(`/api/admin/customers?id=${customer._id}`);
+      const res = await fetch(`/api/admin/customers?id=${customer._id}&page=${page}&limit=${CUSTOMERS_PER_PAGE}`);
       if (res.ok) {
         const data = await res.json();
-        setSelectedCustomerOrders(data.orders || []);
+        const orderData = data.orders || {};
+        setSelectedCustomerOrders(orderData.orders || []);
+        setCustomerOrderPage(orderData.page || 1);
+        setCustomerOrderTotalPages(orderData.totalPages || 1);
+        setCustomerOrderTotal(orderData.total || 0);
       }
     } catch (error) {
       console.error('Error fetching customer details:', error);
@@ -323,6 +490,9 @@ export default function AdminPage() {
     setIsCustomerDetailOpen(false);
     setSelectedCustomer(null);
     setSelectedCustomerOrders([]);
+    setCustomerOrderPage(1);
+    setCustomerOrderTotalPages(1);
+    setCustomerOrderTotal(0);
   };
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
@@ -330,6 +500,7 @@ export default function AdminPage() {
     { key: 'customers', label: 'Customers', count: customerTotal },
     { key: 'products', label: 'Products' },
     { key: 'packages', label: 'Packages', count: packages.length },
+    { key: 'installation', label: 'Installation', count: installations.length },
   ];
 
   return (
@@ -342,7 +513,7 @@ export default function AdminPage() {
         >
           Admin Dashboard
         </motion.h1>
-        <p className="text-gray-400 mb-8">Manage orders, customers, products, and packages</p>
+        <p className="text-gray-400 mb-8">Manage orders, customers, products, packages, and installation</p>
 
         {message && (
           <motion.div
@@ -359,7 +530,7 @@ export default function AdminPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-dark-card rounded-xl p-1 mb-8 border border-gray-800 w-fit">
+        <div className="flex gap-1 bg-dark-card rounded-xl p-1 mb-8 border border-gray-800 w-fit flex-wrap">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -389,9 +560,31 @@ export default function AdminPage() {
             animate={{ opacity: 1 }}
             className="space-y-4"
           >
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Payment status">
+              {([
+                ['success', 'Successful payments'],
+                ['pending', 'Pending payments'],
+                ['failed', 'Failed payments'],
+              ] as const).map(([paymentStatus, label]) => (
+                <button
+                  key={paymentStatus}
+                  type="button"
+                  role="tab"
+                  aria-selected={orderPaymentStatus === paymentStatus}
+                  onClick={() => handleOrderPaymentStatusChange(paymentStatus)}
+                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    orderPaymentStatus === paymentStatus
+                      ? 'bg-primary border-primary text-white'
+                      : 'bg-dark-card border-gray-700 text-gray-300 hover:border-primary hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {orders.length === 0 ? (
               <div className="bg-dark-card rounded-xl p-12 border border-gray-800 text-center">
-                <p className="text-gray-400">No orders yet.</p>
+                <p className="text-gray-400">No {orderPaymentStatus} payment orders.</p>
               </div>
             ) : (
               orders.map((order, index) => (
@@ -404,7 +597,7 @@ export default function AdminPage() {
                 >
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="text-lg font-semibold text-white">
                           {order.product} — {order.package}
                         </h3>
@@ -414,6 +607,11 @@ export default function AdminPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getOrderColor(order.orderStatus)}`}>
                           {order.orderStatus}
                         </span>
+                        {order.installation && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium text-purple-400 bg-purple-500/10">
+                            🔧 Installation
+                          </span>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
                         <p className="text-gray-400">
@@ -437,6 +635,12 @@ export default function AdminPage() {
                             year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                           })}
                         </p>
+                        {order.installation && order.installationPrice > 0 && (
+                          <p className="text-gray-400">
+                            <span className="text-gray-500">Installation Fee:</span>{' '}
+                            <span className="text-purple-400">{formatPrice(order.installationPrice)}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -444,7 +648,9 @@ export default function AdminPage() {
                       <select
                         value={order.orderStatus}
                         onChange={(e) => updateOrderStatus(order.reference, e.target.value)}
-                        className="px-3 py-1.5 bg-dark border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-primary"
+                        disabled={order.paymentStatus !== 'success'}
+                        title={order.paymentStatus !== 'success' ? 'Order status can be updated after payment succeeds' : undefined}
+                        className="px-3 py-1.5 bg-dark border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="processing">Processing</option>
                         <option value="On the way">On the way</option>
@@ -459,7 +665,7 @@ export default function AdminPage() {
 
             {/* Pagination Controls */}
             {orderTotalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 pt-6">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-6">
                 <button
                   onClick={() => handleOrderPageChange(orderPage - 1)}
                   disabled={orderPage <= 1}
@@ -467,6 +673,23 @@ export default function AdminPage() {
                 >
                   ← Previous
                 </button>
+                <div className="flex items-center gap-1" aria-label="Order pages">
+                  {getVisiblePageNumbers(orderPage, orderTotalPages).map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      onClick={() => handleOrderPageChange(pageNumber)}
+                      aria-current={pageNumber === orderPage ? 'page' : undefined}
+                      className={`min-w-9 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                        pageNumber === orderPage
+                          ? 'bg-primary border-primary text-white'
+                          : 'bg-dark-card border-gray-700 text-gray-300 hover:border-primary hover:text-white'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                </div>
                 <span className="text-sm text-gray-400">
                   Page {orderPage} of {orderTotalPages} ({orderTotal} orders)
                 </span>
@@ -508,6 +731,16 @@ export default function AdminPage() {
                     type="number"
                     value={dstvWithDishPrice}
                     onChange={(e) => setDstvWithDishPrice(e.target.value)}
+                    className="w-full px-4 py-3 bg-dark border border-gray-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">DSTV Explora Price (₦)</label>
+                  <input
+                    type="number"
+                    value={dstvExploraPrice}
+                    onChange={(e) => setDstvExploraPrice(e.target.value)}
                     className="w-full px-4 py-3 bg-dark border border-gray-700 rounded-xl focus:outline-none focus:border-primary text-white"
                   />
                 </div>
@@ -565,11 +798,12 @@ export default function AdminPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-2">Product Type</label>
                   <select
                     value={pkgType}
-                    onChange={(e) => setPkgType(e.target.value as 'dstv' | 'gotv' | 'dstv-with-dish')}
+                    onChange={(e) => setPkgType(e.target.value as 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora')}
                     className="w-full px-4 py-3 bg-dark border border-gray-700 rounded-xl focus:outline-none focus:border-primary text-white"
                   >
-                    <option value="dstv">DSTV only</option>
+                    <option value="dstv">DSTV Only</option>
                     <option value="dstv-with-dish">DSTV + Dish</option>
+                    <option value="dstv-explora">DSTV Explora</option>
                     <option value="gotv">GOTV</option>
                   </select>
                 </div>
@@ -585,26 +819,166 @@ export default function AdminPage() {
                 {packages.map((pkg) => (
                   <div
                     key={pkg._id}
-                    className="bg-dark-card rounded-xl p-4 border border-gray-800 flex justify-between items-center"
+                    className="bg-dark-card rounded-xl p-4 border border-gray-800"
                   >
-                    <div>
-                      <h3 className="font-semibold text-white">{pkg.name}</h3>
-                      <p className="text-sm text-gray-400">
-                        {formatPrice(pkg.price)} • {pkg.productType.toUpperCase()}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deletePackage(pkg._id)}
-                      className="text-red-400 border-red-400/50 hover:bg-red-500/10 hover:text-red-300"
-                    >
-                      Delete
-                    </Button>
+                    {editingPkgId === pkg._id ? (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={editPkgName}
+                          onChange={(e) => setEditPkgName(e.target.value)}
+                          className="w-full px-3 py-2 bg-dark border border-gray-700 rounded-lg focus:outline-none focus:border-primary text-white text-sm"
+                          placeholder="Package name"
+                        />
+                        <input
+                          type="number"
+                          value={editPkgPrice}
+                          onChange={(e) => setEditPkgPrice(e.target.value)}
+                          className="w-full px-3 py-2 bg-dark border border-gray-700 rounded-lg focus:outline-none focus:border-primary text-white text-sm"
+                          placeholder="Price (₦)"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => saveEditPackage(pkg._id)}
+                            isLoading={isLoading}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={cancelEditPackage}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold text-white">{pkg.name}</h3>
+                          <p className="text-sm text-gray-400">
+                            {formatPrice(pkg.price)} • {getProductTypeLabel(pkg.productType)}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEditPackage(pkg)}
+                            className="text-blue-400 border-blue-400/50 hover:bg-blue-500/10 hover:text-blue-300"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deletePackage(pkg._id)}
+                            className="text-red-400 border-red-400/50 hover:bg-red-500/10 hover:text-red-300"
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {packages.length === 0 && (
                   <p className="text-gray-500 col-span-2 text-center py-8">No packages yet. Add one above.</p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Installation Tab */}
+        {activeTab === 'installation' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-8"
+          >
+            <div className="max-w-lg bg-dark-card rounded-xl p-6 border border-gray-800">
+              <h2 className="text-xl font-bold mb-2 text-white">Set Installation Price</h2>
+              <p className="text-gray-400 text-sm mb-6">Set an optional installation fee per product type. Customers can choose to add this at checkout.</p>
+              <form onSubmit={upsertInstallation} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Product Type</label>
+                  <select
+                    value={instProductType}
+                    onChange={(e) => setInstProductType(e.target.value as 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora')}
+                    className="w-full px-4 py-3 bg-dark border border-gray-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                  >
+                    <option value="dstv">DSTV Only</option>
+                    <option value="dstv-with-dish">DSTV + Dish</option>
+                    <option value="dstv-explora">DSTV Explora</option>
+                    <option value="gotv">GOTV</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Installation Price (₦)</label>
+                  <input
+                    type="number"
+                    value={instPrice}
+                    onChange={(e) => setInstPrice(e.target.value)}
+                    className="w-full px-4 py-3 bg-dark border border-gray-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <Button type="submit" isLoading={isLoading} className="w-full">
+                  Save Installation Price
+                </Button>
+              </form>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold mb-4 text-white">Active Installation Options</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {installations.map((inst) => (
+                  <div
+                    key={inst._id}
+                    className="bg-dark-card rounded-xl p-4 border border-gray-800 flex justify-between items-center"
+                  >
+                    <div>
+                      <h3 className="font-semibold text-white">{getProductTypeLabel(inst.productType)}</h3>
+                      <p className="text-sm text-gray-400">
+                        {formatPrice(inst.price)}
+                      </p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block ${
+                        inst.isActive
+                          ? 'text-green-400 bg-green-500/10'
+                          : 'text-gray-400 bg-gray-500/10'
+                      }`}>
+                        {inst.isActive ? 'Active' : 'Disabled'}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleInstallationActive(inst)}
+                        className={inst.isActive
+                          ? 'text-yellow-400 border-yellow-400/50 hover:bg-yellow-500/10'
+                          : 'text-green-400 border-green-400/50 hover:bg-green-500/10'
+                        }
+                      >
+                        {inst.isActive ? 'Disable' : 'Enable'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteInstallation(inst._id)}
+                        className="text-red-400 border-red-400/50 hover:bg-red-500/10 hover:text-red-300"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {installations.length === 0 && (
+                  <p className="text-gray-500 col-span-2 text-center py-8">No installation options set. Add one above.</p>
                 )}
               </div>
             </div>
@@ -707,7 +1081,7 @@ export default function AdminPage() {
 
             {/* Pagination */}
             {customerTotalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button
                   onClick={() => handleCustomerPageChange(customerPage - 1)}
                   disabled={customerPage <= 1}
@@ -715,6 +1089,23 @@ export default function AdminPage() {
                 >
                   ← Previous
                 </button>
+                <div className="flex items-center gap-1" aria-label="Customer pages">
+                  {getVisiblePageNumbers(customerPage, customerTotalPages).map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      onClick={() => handleCustomerPageChange(pageNumber)}
+                      aria-current={pageNumber === customerPage ? 'page' : undefined}
+                      className={`min-w-9 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                        pageNumber === customerPage
+                          ? 'bg-primary border-primary text-white'
+                          : 'bg-dark-card border-gray-700 text-gray-300 hover:border-primary hover:text-white'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                </div>
                 <span className="text-sm text-gray-400">
                   Page {customerPage} of {customerTotalPages} ({customerTotal} customers)
                 </span>
@@ -786,15 +1177,22 @@ export default function AdminPage() {
                         <p className="text-gray-500 text-sm py-4 text-center">No orders found.</p>
                       ) : (
                         <div className="space-y-3">
-                          {selectedCustomerOrders.map((order) => (
+                      {selectedCustomerOrders.map((order) => (
                             <div
                               key={order._id}
                               className="bg-dark rounded-xl p-4 border border-gray-800"
                             >
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                                <h4 className="text-sm font-medium text-white">
-                                  {order.product} — {order.package}
-                                </h4>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-sm font-medium text-white">
+                                    {order.product} — {order.package}
+                                  </h4>
+                                  {order.installation && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-full font-medium text-purple-400 bg-purple-500/10">
+                                      🔧
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm font-bold text-primary">{formatPrice(order.totalPrice)}</p>
                               </div>
                               <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-400">
@@ -811,11 +1209,32 @@ export default function AdminPage() {
                                   })}
                                 </span>
                               </div>
-                            </div>
-                          ))}
                         </div>
-                      )}
+                      ))}
                     </div>
+                  )}
+                  {customerOrderTotalPages > 1 && (
+                    <div className="flex items-center justify-center gap-3 pt-4">
+                      <button
+                        onClick={() => selectedCustomer && openCustomerDetail(selectedCustomer, customerOrderPage - 1)}
+                        disabled={customerOrderPage <= 1}
+                        className="px-3 py-1.5 bg-dark border border-gray-700 rounded-lg text-sm text-gray-300 disabled:opacity-40"
+                      >
+                        ← Previous
+                      </button>
+                      <span className="text-xs text-gray-400">
+                        Page {customerOrderPage} of {customerOrderTotalPages} ({customerOrderTotal} orders)
+                      </span>
+                      <button
+                        onClick={() => selectedCustomer && openCustomerDetail(selectedCustomer, customerOrderPage + 1)}
+                        disabled={customerOrderPage >= customerOrderTotalPages}
+                        className="px-3 py-1.5 bg-dark border border-gray-700 rounded-lg text-sm text-gray-300 disabled:opacity-40"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+                </div>
                   </div>
                 </motion.div>
               </div>

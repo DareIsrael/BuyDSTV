@@ -3,6 +3,7 @@ import { paystackService } from '@/services/paystack.service';
 import { orderService } from '@/services/order.service';
 import { productService } from '@/services/product.service';
 import { packageService } from '@/services/package.service';
+import { installationService } from '@/services/installation.service';
 import { generateReference } from '@/lib/utils';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -23,15 +24,16 @@ export async function POST(request: NextRequest) {
 
     const {
       email,
-      product,
+      productType,
       package: packageName,
       customerName,
       phone,
       address,
       customerId,
+      installation,
     } = await request.json();
 
-    if (!email || !product || !packageName || !customerName || !customerId) {
+    if (!email || !productType || !packageName || !customerName || !customerId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -44,10 +46,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized customer ID' }, { status: 403 });
     }
 
-    // Determine product type
-    let productType: 'dstv' | 'gotv' | 'dstv-with-dish' = 'dstv';
-    if (product.toLowerCase().includes('gotv')) productType = 'gotv';
-    if (product.toLowerCase().includes('dish')) productType = 'dstv-with-dish';
+    const validProductTypes = ['dstv', 'gotv', 'dstv-with-dish', 'dstv-explora'] as const;
+    if (!validProductTypes.includes(productType)) {
+      return NextResponse.json({ error: 'Invalid product type' }, { status: 400 });
+    }
 
     // Look up server-side prices — REJECT if not found
     const dbProduct = await productService.getProductByType(productType);
@@ -61,8 +63,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Package not found' }, { status: 400 });
     }
 
+    // Calculate installation price SERVER-SIDE if requested
+    let installationPrice = 0;
+    const wantsInstallation = installation === true;
+    if (wantsInstallation) {
+      const dbInstallation = await installationService.getByProductType(productType);
+      if (!dbInstallation) {
+        return NextResponse.json(
+          { error: 'Installation is not available for this product' },
+          { status: 400 }
+        );
+      }
+      installationPrice = dbInstallation.price;
+    }
+
     // Calculate amount SERVER-SIDE — never trust client amount
-    const serverAmount = dbProduct.price + dbPackage.price;
+    const serverAmount = dbProduct.price + dbPackage.price + installationPrice;
 
     const reference = generateReference();
 
@@ -70,7 +86,15 @@ export async function POST(request: NextRequest) {
       email,
       serverAmount,
       reference,
-      { product, package: packageName, customerName, phone, address }
+      {
+        product: dbProduct.name,
+        package: dbPackage.name,
+        customerName,
+        phone,
+        address,
+        installation: wantsInstallation,
+        installationPrice,
+      }
     );
 
     if (response.status) {
@@ -80,9 +104,11 @@ export async function POST(request: NextRequest) {
         email,
         phone: phone || '',
         address: address || '',
-        product,
-        package: packageName,
+        product: dbProduct.name,
+        package: dbPackage.name,
         totalPrice: serverAmount,
+        installation: wantsInstallation,
+        installationPrice,
         reference,
       });
 

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatPrice } from '@/lib/utils';
 import { IOrder } from '@/types/order';
+import { getVisiblePageNumbers } from '@/lib/pagination';
 import Link from 'next/link';
 
 export default function CustomerOrdersPage() {
@@ -13,6 +14,10 @@ export default function CustomerOrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const ordersPerPage = 10;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -21,16 +26,20 @@ export default function CustomerOrdersPage() {
     }
 
     if (status === 'authenticated') {
-      fetchOrders();
+      fetchOrders(1);
     }
   }, [status, router]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (requestedPage: number) => {
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/orders');
+      const res = await fetch(`/api/orders?page=${requestedPage}&limit=${ordersPerPage}`);
       if (res.ok) {
         const data = await res.json();
-        setOrders(Array.isArray(data) ? data : []);
+        setOrders(data.orders || []);
+        setPage(data.page || 1);
+        setTotal(data.total || 0);
+        setTotalPages(data.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -135,6 +144,44 @@ export default function CustomerOrdersPage() {
                   </div>
                 </motion.div>
               ))}
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-6">
+              <button
+                type="button"
+                onClick={() => fetchOrders(page - 1)}
+                disabled={page <= 1}
+                className="px-4 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                ← Previous
+              </button>
+              <div className="flex items-center gap-1" aria-label="Order pages">
+                {getVisiblePageNumbers(page, totalPages).map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => fetchOrders(pageNumber)}
+                    aria-current={pageNumber === page ? 'page' : undefined}
+                    className={`min-w-9 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                      pageNumber === page
+                        ? 'bg-primary border-primary text-white'
+                        : 'bg-dark-card border-gray-700 text-gray-300 hover:border-primary hover:text-white'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm text-gray-400">Page {page} of {totalPages} ({total} orders)</span>
+              <button
+                type="button"
+                onClick={() => fetchOrders(page + 1)}
+                disabled={page >= totalPages}
+                className="px-4 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                Next →
+              </button>
             </div>
           )}
         </motion.div>

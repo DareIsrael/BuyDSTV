@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const updated = await Order.findOneAndUpdate(
       { reference, paymentStatus: { $ne: 'success' } },
       { paymentStatus: 'success' },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (updated) {

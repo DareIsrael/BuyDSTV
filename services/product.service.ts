@@ -8,7 +8,7 @@ export class ProductService {
     return await Product.find({}).sort({ type: 1 });
   }
 
-  async getProductByType(type: 'dstv' | 'gotv' | 'dstv-with-dish'): Promise<IProduct | null> {
+  async getProductByType(type: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora'): Promise<IProduct | null> {
     await connectDB();
     return await Product.findOne({ type });
   }
@@ -21,15 +21,21 @@ export class ProductService {
 
   async updateProduct(id: string, data: UpdateProductDTO): Promise<IProduct | null> {
     await connectDB();
-    return await Product.findByIdAndUpdate(id, data, { new: true });
+    return await Product.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
-  async updateProductByType(type: 'dstv' | 'gotv' | 'dstv-with-dish', price: number): Promise<IProduct | null> {
+  async updateProductByType(type: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora', price: number): Promise<IProduct | null> {
     await connectDB();
+    const nameMap: Record<string, string> = {
+      'dstv': 'DSTV',
+      'gotv': 'GOTV',
+      'dstv-with-dish': 'DSTV + Dish',
+      'dstv-explora': 'DSTV Explora',
+    };
     return await Product.findOneAndUpdate(
       { type },
-      { price, name: type.toUpperCase() },
-      { upsert: true, new: true }
+      { price, name: nameMap[type] || type.toUpperCase() },
+      { upsert: true, returnDocument: 'after' }
     );
   }
 

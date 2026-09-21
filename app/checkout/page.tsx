@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { productService } from '@/services/product.service';
 import { packageService } from '@/services/package.service';
+import { installationService } from '@/services/installation.service';
 import { CheckoutClient } from './CheckoutClient';
 
 interface CheckoutPageProps {
@@ -22,12 +23,14 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   }
 
   const params = await searchParams;
-  let productType: 'dstv' | 'gotv' | 'dstv-with-dish' = 'dstv';
+  let productType: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora' = 'dstv';
   if (params.product === 'gotv') productType = 'gotv';
   if (params.product === 'dstv-with-dish') productType = 'dstv-with-dish';
+  if (params.product === 'dstv-explora') productType = 'dstv-explora';
 
   const product = await productService.getProductByType(productType);
   const packages = await packageService.getPackagesByProductType(productType);
+  const installationOption = await installationService.getByProductType(productType);
 
   if (!product) {
     return (
@@ -45,6 +48,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
       <CheckoutClient
         product={JSON.parse(JSON.stringify(product))}
         packages={JSON.parse(JSON.stringify(packages))}
+        installationOption={installationOption ? JSON.parse(JSON.stringify(installationOption)) : null}
         customer={{
           id: user.id,
           name: user.name || '',

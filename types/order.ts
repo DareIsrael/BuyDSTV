@@ -8,6 +8,8 @@ export interface IOrder {
   product: string;
   package: string;
   totalPrice: number;
+  installation: boolean;
+  installationPrice: number;
   paymentStatus: 'pending' | 'success' | 'failed';
   orderStatus: 'processing' | 'On the way' | 'delivered' | 'cancelled';
   reference: string;
@@ -24,18 +26,21 @@ export interface CreateOrderDTO {
   product: string;
   package: string;
   totalPrice: number;
+  installation: boolean;
+  installationPrice: number;
   reference: string;
 }
 
 export interface PaymentInitializeRequest {
   email: string;
   amount: number;
-  product: string;
+  productType: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora';
   package: string;
   customerName: string;
   phone: string;
   address: string;
   customerId: string;
+  installation?: boolean;
 }
 
 export interface PaymentVerifyResponse {

@@ -61,29 +61,18 @@ export async function checkRateLimit(
   const now = new Date();
   const windowEnd = new Date(now.getTime() + config.windowSeconds * 1000);
 
-  // Atomically find-and-increment, or create if doesn't exist
+  // Atomically increment an active window, or create a fresh one below.
   const doc = await RateLimitModel.findOneAndUpdate(
+    { key, expiresAt: { $gt: now } },
+    { $inc: { count: 1 } },
     {
-      key,
-      expiresAt: { $gt: now }, // Only match non-expired entries
-    },
-    {
-      $inc: { count: 1 },
-    },
-    {
-      new: true,
+      returnDocument: 'after',
       upsert: false,
     }
   );
 
   if (!doc) {
-    // No active window — create a new one
-    await RateLimitModel.create({
-      key,
-      count: 1,
-      expiresAt: windowEnd,
-    });
-
+    await RateLimitModel.create({ key, count: 1, expiresAt: windowEnd });
     return {
       allowed: true,
       remaining: config.maxRequests - 1,
@@ -117,6 +106,8 @@ export const RATE_LIMITS = {
   resetPassword: { prefix: 'reset-pwd', windowSeconds: 900, maxRequests: 5 },   // 5 per 15 min
   paymentInit: { prefix: 'pay-init', windowSeconds: 60, maxRequests: 5 },       // 5 per minute
   paymentVerify: { prefix: 'pay-verify', windowSeconds: 60, maxRequests: 10 },  // 10 per minute
+  publicApi: { prefix: 'public-api', windowSeconds: 60, maxRequests: 120 },     // 120 per minute
+  authenticatedApi: { prefix: 'authenticated-api', windowSeconds: 60, maxRequests: 60 }, // 60 per minute
   adminApi: { prefix: 'admin-api', windowSeconds: 60, maxRequests: 30 },        // 30 per minute
 } as const;
 

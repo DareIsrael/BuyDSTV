@@ -33,9 +33,8 @@ export class CustomerService {
   ): Promise<PaginatedCustomers> {
     await connectDB();
 
-    const safePage = Math.max(1, page);
+    const requestedPage = Math.max(1, page);
     const safeLimit = Math.min(Math.max(1, limit), 100);
-    const skip = (safePage - 1) * safeLimit;
 
     // Build query filter
     const filter: Record<string, unknown> = { role: 'customer' };
@@ -49,15 +48,15 @@ export class CustomerService {
 
     const sortOrder = sort === 'oldest' ? 1 : -1;
 
-    const [customers, total] = await Promise.all([
-      Customer.find(filter)
-        .select(SENSITIVE_FIELDS)
-        .sort({ createdAt: sortOrder })
-        .skip(skip)
-        .limit(safeLimit)
-        .lean(),
-      Customer.countDocuments(filter),
-    ]);
+    const total = await Customer.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    const safePage = Math.min(requestedPage, totalPages);
+    const customers = await Customer.find(filter)
+      .select(SENSITIVE_FIELDS)
+      .sort({ createdAt: sortOrder })
+      .skip((safePage - 1) * safeLimit)
+      .limit(safeLimit)
+      .lean();
 
     // Get order counts for the current page of customers in one query
     const customerIds = customers.map((c) => String(c._id));
@@ -73,7 +72,7 @@ export class CustomerService {
       customers: customersWithCounts,
       total,
       page: safePage,
-      totalPages: Math.ceil(total / safeLimit),
+      totalPages,
     };
   }
 
@@ -94,11 +93,26 @@ export class CustomerService {
     } as SafeCustomer;
   }
 
-  async getCustomerOrders(customerId: string) {
+  async getCustomerOrders(customerId: string, page = 1, limit = 20) {
     await connectDB();
-    return await Order.find({ customerId })
+    const requestedPage = Math.max(1, page);
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+    const filter = { customerId };
+    const total = await Order.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    const safePage = Math.min(requestedPage, totalPages);
+    const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
+      .skip((safePage - 1) * safeLimit)
+      .limit(safeLimit)
       .lean();
+
+    return {
+      orders,
+      total,
+      page: safePage,
+      totalPages,
+    };
   }
 
   private async getOrderCounts(customerIds: string[]): Promise<Map<string, number>> {

@@ -15,7 +15,7 @@ const ProductSchema = new Schema<IProduct>(
     },
     type: {
       type: String,
-      enum: ['dstv', 'gotv', 'dstv-with-dish'],
+      enum: ['dstv', 'gotv', 'dstv-with-dish', 'dstv-explora'],
       required: true,
     },
   },

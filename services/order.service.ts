@@ -9,28 +9,41 @@ export interface PaginatedOrders {
   totalPages: number;
 }
 
+export type PaymentStatus = IOrder['paymentStatus'];
+
 export class OrderService {
   async getAllOrders(): Promise<IOrder[]> {
     await connectDB();
     return await Order.find({}).sort({ createdAt: -1 });
   }
 
-  async getAllOrdersPaginated(page: number = 1, limit: number = 20): Promise<PaginatedOrders> {
+  async getAllOrdersPaginated(
+    page = 1,
+    limit = 20,
+    paymentStatus?: PaymentStatus,
+    customerId?: string
+  ): Promise<PaginatedOrders> {
     await connectDB();
-    const safePage = Math.max(1, page);
+    const requestedPage = Math.max(1, page);
     const safeLimit = Math.min(Math.max(1, limit), 100); // Cap at 100
-    const skip = (safePage - 1) * safeLimit;
+    const filter: Record<string, unknown> = {};
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (customerId) filter.customerId = customerId;
 
-    const [orders, total] = await Promise.all([
-      Order.find({}).sort({ createdAt: -1 }).skip(skip).limit(safeLimit).lean(),
-      Order.countDocuments({}),
-    ]);
+    const total = await Order.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    const safePage = Math.min(requestedPage, totalPages);
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((safePage - 1) * safeLimit)
+      .limit(safeLimit)
+      .lean();
 
     return {
       orders: orders as IOrder[],
       total,
       page: safePage,
-      totalPages: Math.ceil(total / safeLimit),
+      totalPages,
     };
   }
 
@@ -42,6 +55,14 @@ export class OrderService {
   async getOrdersByCustomerId(customerId: string): Promise<IOrder[]> {
     await connectDB();
     return await Order.find({ customerId }).sort({ createdAt: -1 });
+  }
+
+  async getOrdersByCustomerIdPaginated(
+    customerId: string,
+    page = 1,
+    limit = 20
+  ): Promise<PaginatedOrders> {
+    return this.getAllOrdersPaginated(page, limit, undefined, customerId);
   }
 
   async getOrdersByEmail(email: string): Promise<IOrder[]> {
@@ -60,7 +81,7 @@ export class OrderService {
     return await Order.findOneAndUpdate(
       { reference },
       { paymentStatus: status },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 
@@ -69,7 +90,7 @@ export class OrderService {
     return await Order.findOneAndUpdate(
       { reference },
       { orderStatus: status },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 }

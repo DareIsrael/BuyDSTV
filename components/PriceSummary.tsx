@@ -6,12 +6,14 @@ import { motion } from 'framer-motion';
 interface PriceSummaryProps {
   decoderPrice: number;
   packagePrice: number;
+  installationPrice?: number;
   totalPrice: number;
 }
 
 export const PriceSummary: React.FC<PriceSummaryProps> = ({
   decoderPrice,
   packagePrice,
+  installationPrice = 0,
   totalPrice,
 }) => {
   return (
@@ -30,6 +32,12 @@ export const PriceSummary: React.FC<PriceSummaryProps> = ({
           <div className="flex justify-between pb-4 border-b border-gray-800">
             <span className="text-gray-400">Package Price</span>
             <span className="font-semibold">{formatPrice(packagePrice)}</span>
+          </div>
+        )}
+        {installationPrice > 0 && (
+          <div className="flex justify-between pb-4 border-b border-gray-800">
+            <span className="text-gray-400">Installation</span>
+            <span className="font-semibold text-primary">{formatPrice(installationPrice)}</span>
           </div>
         )}
         <div className="flex justify-between items-end pt-4">

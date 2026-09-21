@@ -15,7 +15,7 @@ const PackageSchema = new Schema<IPackage>(
     productType: {
       type: String,
       required: true,
-      enum: ['dstv', 'gotv', 'dstv-with-dish'],
+      enum: ['dstv', 'gotv', 'dstv-with-dish', 'dstv-explora'],
     },
   },
   {

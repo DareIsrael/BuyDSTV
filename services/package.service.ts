@@ -8,7 +8,7 @@ export class PackageService {
     return await Package.find({}).sort({ productType: 1, price: 1 });
   }
 
-  async getPackagesByProductType(productType: 'dstv' | 'gotv' | 'dstv-with-dish'): Promise<IPackage[]> {
+  async getPackagesByProductType(productType: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora'): Promise<IPackage[]> {
     await connectDB();
     return await Package.find({ productType }).sort({ price: 1 });
   }
@@ -26,7 +26,7 @@ export class PackageService {
 
   async updatePackage(id: string, data: UpdatePackageDTO): Promise<IPackage | null> {
     await connectDB();
-    return await Package.findByIdAndUpdate(id, data, { new: true });
+    return await Package.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
   async deletePackage(id: string): Promise<boolean> {

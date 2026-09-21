@@ -41,6 +41,15 @@ const OrderSchema = new Schema<IOrder>(
       required: true,
       min: 0,
     },
+    installation: {
+      type: Boolean,
+      default: false,
+    },
+    installationPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     paymentStatus: {
       type: String,
       enum: ['pending', 'success', 'failed'],
@@ -65,7 +74,7 @@ const OrderSchema = new Schema<IOrder>(
 // Indexes for efficient queries
 OrderSchema.index({ customerId: 1, createdAt: -1 });
 OrderSchema.index({ email: 1 });
-OrderSchema.index({ paymentStatus: 1 });
+OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ createdAt: -1 });
 
 export const Order: Model<IOrder> =

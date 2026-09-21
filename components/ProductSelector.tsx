@@ -6,8 +6,8 @@ import { formatPrice } from '@/lib/utils';
 
 interface ProductSelectorProps {
   products: IProduct[];
-  selectedType: 'dstv' | 'gotv' | 'dstv-with-dish';
-  onSelect: (type: 'dstv' | 'gotv' | 'dstv-with-dish') => void;
+  selectedType: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora';
+  onSelect: (type: 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora') => void;
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({

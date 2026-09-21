@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { packageService } from '@/services/package.service';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.publicApi);
+    if (rateLimited) return rateLimited;
+
     const { searchParams } = new URL(request.url);
-    const productType = searchParams.get('productType') as 'dstv' | 'gotv' | 'dstv-with-dish' | null;
+    const productType = searchParams.get('productType') as 'dstv' | 'gotv' | 'dstv-with-dish' | 'dstv-explora' | null;
 
     let packages;
     if (productType) {
@@ -29,6 +33,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.adminApi);
+    if (rateLimited) return rateLimited;
+
     const session = await getServerSession(authOptions);
     if (!session || (session.user as { role?: string })?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -61,6 +68,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.adminApi);
+    if (rateLimited) return rateLimited;
+
     const session = await getServerSession(authOptions);
     if (!session || (session.user as { role?: string })?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -88,6 +98,51 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting package:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.adminApi);
+    if (rateLimited) return rateLimited;
+
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as { role?: string })?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Package ID required' },
+        { status: 400 }
+      );
+    }
+
+    const { name, price } = await request.json();
+    const updateData: { name?: string; price?: number } = {};
+
+    if (name) updateData.name = name;
+    if (typeof price === 'number') updateData.price = Math.round(price * 100);
+
+    const updated = await packageService.updatePackage(id, updateData);
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'Package not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('Error updating package:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

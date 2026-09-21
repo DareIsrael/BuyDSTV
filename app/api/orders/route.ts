@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { orderService } from '@/services/order.service';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { getPaginationParams } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.authenticatedApi);
+    if (rateLimited) return rateLimited;
+
     const session = await getServerSession(authOptions);
 
     if (!session) {
@@ -33,17 +38,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(order);
     }
 
-    // Admin gets paginated orders
+    // Admin gets server-filtered, paginated orders. Payment statuses must not
+    // be mixed because fulfilment actions apply only to paid orders.
     if (user.role === 'admin') {
-      const page = parseInt(searchParams.get('page') || '1', 10);
-      const limit = parseInt(searchParams.get('limit') || '20', 10);
-      const result = await orderService.getAllOrdersPaginated(page, limit);
+      const { page, limit } = getPaginationParams(searchParams);
+      const requestedPaymentStatus = searchParams.get('paymentStatus');
+      if (requestedPaymentStatus && !['pending', 'success', 'failed'].includes(requestedPaymentStatus)) {
+        return NextResponse.json({ error: 'Invalid payment status' }, { status: 400 });
+      }
+      const paymentStatus = requestedPaymentStatus as 'pending' | 'success' | 'failed' | null;
+      const result = await orderService.getAllOrdersPaginated(page, limit, paymentStatus || undefined);
       return NextResponse.json(result);
     }
 
     // Customer can only see their own orders
     if (user.role === 'customer' && user.id) {
-      const orders = await orderService.getOrdersByCustomerId(user.id);
+      const { page, limit } = getPaginationParams(searchParams);
+      const orders = await orderService.getOrdersByCustomerIdPaginated(user.id, page, limit);
       return NextResponse.json(orders);
     }
 
@@ -59,6 +70,9 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const rateLimited = await applyRateLimit(request, RATE_LIMITS.adminApi);
+    if (rateLimited) return rateLimited;
+
     const session = await getServerSession(authOptions);
 
     if (!session || (session.user as { role?: string })?.role !== 'admin') {
@@ -82,6 +96,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Invalid order status' },
         { status: 400 }
+      );
+    }
+
+    const existingOrder = await orderService.getOrderByReference(reference);
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (existingOrder.paymentStatus !== 'success') {
+      return NextResponse.json(
+        { error: 'Only successfully paid orders can be fulfilled' },
+        { status: 409 }
       );
     }
 
