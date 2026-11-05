@@ -5,6 +5,7 @@ import { productService } from '@/services/product.service';
 import { packageService } from '@/services/package.service';
 import { installationService } from '@/services/installation.service';
 import { CheckoutClient } from './CheckoutClient';
+import { VideoBackground } from '@/components/VideoBackground';
 
 interface CheckoutPageProps {
   searchParams: Promise<{
@@ -44,19 +45,22 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark pt-16">
-      <CheckoutClient
-        product={JSON.parse(JSON.stringify(product))}
-        packages={JSON.parse(JSON.stringify(packages))}
-        installationOption={installationOption ? JSON.parse(JSON.stringify(installationOption)) : null}
-        customer={{
-          id: user.id,
-          name: user.name || '',
-          email: user.email || '',
-          phone: user.phone || '',
-          address: user.address || '',
-        }}
-      />
+    <div className="relative min-h-screen pt-16">
+      <VideoBackground />
+      <div className="relative z-10">
+        <CheckoutClient
+          product={JSON.parse(JSON.stringify(product))}
+          packages={JSON.parse(JSON.stringify(packages))}
+          installationOption={installationOption ? JSON.parse(JSON.stringify(installationOption)) : null}
+          customer={{
+            id: user.id,
+            name: user.name || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            address: user.address || '',
+          }}
+        />
+      </div>
     </div>
   );
 }

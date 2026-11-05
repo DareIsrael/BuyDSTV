@@ -125,7 +125,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-6">
             {/* Customer Info */}
-            <div className="bg-dark-card rounded-xl p-6 border border-gray-800">
+            <div className="bg-dark-card/90 backdrop-blur-xl rounded-xl p-6 border border-gray-800/80 shadow-xl">
               <h2 className="text-xl font-bold mb-4 text-white">Activation Details</h2>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
@@ -148,7 +148,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
             </div>
 
             {/* Selected Product */}
-            <div className="bg-dark-card rounded-xl p-6 border border-gray-800">
+            <div className="bg-dark-card/90 backdrop-blur-xl rounded-xl p-6 border border-gray-800/80 shadow-xl">
               <h2 className="text-xl font-bold mb-4 text-white">Selected Decoder</h2>
               <div className="flex justify-between items-center">
                 <div>
@@ -162,7 +162,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
             </div>
 
             {/* Package + Installation + Payment */}
-            <div className="bg-dark-card rounded-xl p-6 border border-gray-800">
+            <div className="bg-dark-card/90 backdrop-blur-xl rounded-xl p-6 border border-gray-800/80 shadow-xl">
               <h2 className="text-xl font-bold mb-4 text-white">Select Package</h2>
               <div className="space-y-4">
                 <PackageSelect

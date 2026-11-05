@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
+import { VideoBackground } from '@/components/VideoBackground';
 
 type VerifyStatus = 'loading' | 'success' | 'failed';
 
@@ -100,12 +101,13 @@ function PaymentVerifyContent() {
 
 export default function PaymentVerifyPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark flex items-center justify-center px-4">
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-16">
+      <VideoBackground />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="bg-dark-card rounded-2xl p-8 md:p-12 border border-gray-800 max-w-md w-full text-center"
+        className="bg-dark-card/90 backdrop-blur-xl rounded-2xl p-8 md:p-12 border border-gray-800/80 max-w-md w-full text-center relative z-10 shadow-2xl"
       >
         <Suspense fallback={
           <>

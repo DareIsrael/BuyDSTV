@@ -20,7 +20,7 @@ export const PriceSummary: React.FC<PriceSummaryProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-dark-card rounded-xl p-6 border border-gray-800"
+      className="bg-dark-card/90 backdrop-blur-xl rounded-xl p-6 border border-gray-800/80 shadow-xl"
     >
       <h2 className="text-2xl font-bold mb-4">Order Summary</h2>
       <div className="space-y-4">

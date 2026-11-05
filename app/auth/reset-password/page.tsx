@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
+import { VideoBackground } from '@/components/VideoBackground';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -172,12 +173,13 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark pt-24 pb-12">
-      <div className="container mx-auto px-4 flex justify-center">
+    <div className="relative min-h-screen pt-24 pb-12 flex items-center justify-center">
+      <VideoBackground />
+      <div className="container mx-auto px-4 flex justify-center relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-dark-card rounded-2xl p-8 border border-gray-800"
+          className="w-full max-w-md bg-dark-card/90 backdrop-blur-xl rounded-2xl p-8 border border-gray-800/80 shadow-2xl"
         >
           <Suspense fallback={<div className="text-white text-center">Loading securely...</div>}>
             <ResetPasswordContent />

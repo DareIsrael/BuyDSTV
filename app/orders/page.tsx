@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { formatPrice } from '@/lib/utils';
 import { IOrder } from '@/types/order';
 import { getVisiblePageNumbers } from '@/lib/pagination';
+import { VideoBackground } from '@/components/VideoBackground';
 import Link from 'next/link';
 
 export default function CustomerOrdersPage() {
@@ -69,15 +70,17 @@ export default function CustomerOrdersPage() {
 
   if (status === 'loading' || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark flex items-center justify-center pt-16">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="relative min-h-screen flex items-center justify-center pt-16">
+        <VideoBackground />
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin relative z-10" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark pt-24 pb-12">
-      <div className="container mx-auto px-4">
+    <div className="relative min-h-screen pt-24 pb-12">
+      <VideoBackground />
+      <div className="container mx-auto px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -85,7 +88,7 @@ export default function CustomerOrdersPage() {
           <h1 className="text-3xl font-bold text-white mb-8">My Orders</h1>
 
           {orders.length === 0 ? (
-            <div className="bg-dark-card rounded-2xl p-12 border border-gray-800 text-center">
+            <div className="bg-dark-card/90 backdrop-blur-xl rounded-2xl p-12 border border-gray-800/80 text-center shadow-xl">
               <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -108,7 +111,7 @@ export default function CustomerOrdersPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-dark-card rounded-xl p-6 border border-gray-800"
+                  className="bg-dark-card/90 backdrop-blur-xl rounded-xl p-6 border border-gray-800/80 shadow-xl"
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-1">

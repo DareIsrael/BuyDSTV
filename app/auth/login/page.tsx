@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
+import { VideoBackground } from '@/components/VideoBackground';
 import Link from 'next/link';
 
 function LoginContent() {
@@ -57,14 +58,14 @@ function LoginContent() {
     : '/auth/register';
 
   return (
-    <div className="bg-dark-card rounded-2xl p-8 border border-gray-800 shadow-2xl relative">
+    <div className="bg-dark-card/90 backdrop-blur-xl rounded-2xl p-8 border border-gray-800/80 shadow-2xl relative">
       {/* Login Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-dark-card rounded-2xl p-8 border border-gray-800 shadow-2xl max-w-md w-full text-center space-y-6 relative"
+            className="bg-dark-card/95 backdrop-blur-2xl rounded-2xl p-8 border border-gray-800 shadow-2xl max-w-md w-full text-center space-y-6 relative"
           >
             {/* Close Modal "X" Button */}
             <button
@@ -241,15 +242,16 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark via-dark-card to-dark flex items-center justify-center px-4">
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-16">
+      <VideoBackground />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
         <Suspense fallback={
-          <div className="bg-dark-card rounded-2xl p-8 border border-gray-800 shadow-2xl text-center text-gray-400">
+          <div className="bg-dark-card/90 backdrop-blur-xl rounded-2xl p-8 border border-gray-800 shadow-2xl text-center text-gray-400">
             Loading...
           </div>
         }>
@@ -259,7 +261,7 @@ export default function LoginPage() {
         <div className="mt-4 text-center">
           <Link
             href="/"
-            className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+            className="text-gray-400 hover:text-white text-sm transition-colors"
           >
             ← Back to Home
           </Link>

@@ -235,8 +235,8 @@ export const Hero: React.FC = () => {
 
   // Select video URL based on device
   const videoUrl = isMobile
-    ? 'https://res.cloudinary.com/dveill0ji/video/upload/v1774943918/mobile5_a1uhpo.mp4'
-    : 'https://res.cloudinary.com/dveill0ji/video/upload/v1774876119/DstvMotion_jpswci.mp4';
+    ? '/MyDstv.mp4'
+    : '/MyDstv.mp4';
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
