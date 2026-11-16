@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { connectDB } from '@/lib/db';
 import { Order } from '@/models/Order';
-import { sendPurchaseConfirmationEmail } from '@/lib/email';
+import { paymentRecoveryService } from '@/services/payment-recovery.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,8 +56,9 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    // Idempotent: only update if not already success
-    const order = await Order.findOne({ reference });
+    // Idempotent: only update if not already success. The reference may belong
+    // to any payment attempt of the order (payment retries use new references).
+    const order = await paymentRecoveryService.findOrderByPaymentReference(reference);
 
     if (!order) {
       console.warn(`Webhook: no order found for reference ${reference}`);
@@ -70,32 +71,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify amount matches (Paystack sends in kobo, our DB stores in kobo)
-    if (paystackAmountKobo !== order.totalPrice) {
+    if (paystackAmountKobo !== order.totalPrice || (data?.currency && data.currency !== 'NGN')) {
       console.error(
-        `Webhook amount mismatch: Paystack=${paystackAmountKobo}, Order=${order.totalPrice}, ref=${reference}`
+        `Webhook amount mismatch: Paystack=${paystackAmountKobo} ${data?.currency || ''}, Order=${order.totalPrice}, ref=${reference}`
       );
       // Mark as failed if amount doesn't match
       await Order.findOneAndUpdate(
-        { reference, paymentStatus: { $ne: 'success' } },
+        { _id: order._id, paymentStatus: { $ne: 'success' } },
         { paymentStatus: 'failed' }
       );
       return NextResponse.json({ message: 'Amount mismatch' }, { status: 200 });
     }
 
-    // Update payment status atomically (only if not already success)
-    const updated = await Order.findOneAndUpdate(
-      { reference, paymentStatus: { $ne: 'success' } },
-      { paymentStatus: 'success' },
-      { returnDocument: 'after' }
-    );
-
-    if (updated) {
-      try {
-        await sendPurchaseConfirmationEmail(updated);
-      } catch (err) {
-        console.error('Failed to send purchase confirmation email:', err);
-      }
-    }
+    // Update payment status atomically (only if not already success) and send confirmation
+    await paymentRecoveryService.markOrderPaid(String(order._id), reference);
 
     return NextResponse.json({ message: 'Webhook processed' }, { status: 200 });
   } catch (error) {

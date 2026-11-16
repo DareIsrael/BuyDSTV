@@ -10,6 +10,8 @@ import { IProduct } from '@/types/product';
 import { IPackage } from '@/types/package';
 import { IInstallation } from '@/types/installation';
 import { calculateTotal, formatPrice } from '@/lib/utils';
+import { getContinuePaymentPath } from '@/lib/order-payment';
+import Link from 'next/link';
 
 const productDetailsMap: Record<string, { summary: string; inTheBox: string[]; features: string[] }> = {
   dstv: {
@@ -34,6 +36,16 @@ const productDetailsMap: Record<string, { summary: string; inTheBox: string[]; f
   },
 };
 
+export interface PendingOrderSummary {
+  _id: string;
+  reference: string;
+  product: string;
+  package: string;
+  totalPrice: number;
+  paymentStatus: 'pending' | 'success' | 'failed';
+  createdAt: string;
+}
+
 interface CheckoutClientProps {
   product: IProduct;
   packages: IPackage[];
@@ -45,6 +57,8 @@ interface CheckoutClientProps {
     phone: string;
     address: string;
   };
+  /** Unpaid orders of this customer that can still be paid. */
+  pendingOrders?: PendingOrderSummary[];
 }
 
 export const CheckoutClient: React.FC<CheckoutClientProps> = ({
@@ -52,6 +66,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
   packages,
   installationOption,
   customer,
+  pendingOrders = [],
 }) => {
   const router = useRouter();
   const [selectedPackageId, setSelectedPackageId] = useState('');
@@ -72,6 +87,7 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
 
     setIsLoading(true);
     setError('');
+    let redirecting = false;
 
     try {
       const response = await fetch('/api/paystack/initialize', {
@@ -94,15 +110,18 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
 
       const result = await response.json();
 
-      if (result.status) {
+      if (result.status && result.data?.authorization_url) {
+        // Keep the button disabled while the browser navigates away so the
+        // customer cannot start a second payment by clicking again.
+        redirecting = true;
         window.location.href = result.data.authorization_url;
       } else {
-        setError(result.message || 'Payment initialization failed');
+        setError(result.error || result.message || 'Payment initialization failed');
       }
     } catch {
       setError('An error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      if (!redirecting) setIsLoading(false);
     }
   };
 
@@ -121,6 +140,40 @@ export const CheckoutClient: React.FC<CheckoutClientProps> = ({
         >
           ← Back
         </Button>
+
+        {pendingOrders.length > 0 && (
+          <div className="mb-8 bg-yellow-500/10 backdrop-blur-xl border border-yellow-500/40 rounded-xl p-5 shadow-xl">
+            <h2 className="text-base font-semibold text-yellow-200 mb-1">
+              You have {pendingOrders.length === 1 ? 'an unpaid order' : 'unpaid orders'}
+            </h2>
+            <p className="text-sm text-gray-300 mb-4">
+              Continue payment for an existing order instead of placing a new one.
+            </p>
+            <div className="space-y-3">
+              {pendingOrders.map((order) => (
+                <div
+                  key={order._id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-dark/60 rounded-lg p-3 border border-gray-800"
+                >
+                  <div className="text-sm">
+                    <p className="text-white font-medium">
+                      {order.product} — {order.package}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      Ref: {order.reference} · {formatPrice(order.totalPrice)}
+                    </p>
+                  </div>
+                  <Link
+                    href={getContinuePaymentPath(order._id)}
+                    className="inline-block text-center px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
+                  >
+                    {order.paymentStatus === 'failed' ? 'Retry Payment' : 'Continue Payment'}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-6">

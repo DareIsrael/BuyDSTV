@@ -197,6 +197,83 @@ export async function sendPurchaseConfirmationEmail(order: IOrder) {
   }
 }
 
+// ─── Abandoned Payment Reminder Email ────────────────────────────────
+
+/**
+ * Friendly reminder for an order whose payment was started but not completed.
+ * `continuePaymentUrl` must point to the in-app Continue Payment page for this
+ * order (the page enforces sign-in and ownership before resuming payment).
+ * Throws on failure so the caller can record and retry.
+ */
+export async function sendPaymentReminderEmail(order: IOrder, continuePaymentUrl: string) {
+  const transporter = createTransporter();
+  const amountDue = formatNaira(order.totalPrice);
+
+  const html = wrapHtml(`
+    <h2 style="color: #111827; margin-top: 0;">Your order is waiting for you</h2>
+    <p style="color: #374151; line-height: 1.6;">
+      Hi ${escapeHtml(order.customerName)}, we noticed you started an order on BuyDSTV but the payment was not completed.
+      Your order has been saved, so you can pick up right where you left off.
+    </p>
+
+    <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; border: 1px solid #e5e7eb;">
+      <h3 style="color: #111827; margin-top: 0; font-size: 16px;">Order Details</h3>
+      <table style="width: 100%; font-size: 14px; color: #374151; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Reference</td>
+          <td style="padding: 8px 0; text-align: right; font-family: monospace;">${escapeHtml(order.reference)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Product</td>
+          <td style="padding: 8px 0; text-align: right;">${escapeHtml(order.product)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Package</td>
+          <td style="padding: 8px 0; text-align: right;">${escapeHtml(order.package)}</td>
+        </tr>
+        ${order.installation ? `
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Installation</td>
+          <td style="padding: 8px 0; text-align: right;">Included</td>
+        </tr>` : ''}
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Delivery Address</td>
+          <td style="padding: 8px 0; text-align: right;">${escapeHtml(order.address)}</td>
+        </tr>
+        <tr style="border-top: 2px solid #e5e7eb;">
+          <td style="padding: 12px 0; font-weight: 700; color: #111827;">Amount Due</td>
+          <td style="padding: 12px 0; text-align: right; font-weight: 700; color: #6366f1; font-size: 18px;">${amountDue}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${escapeHtml(continuePaymentUrl)}" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; display: inline-block;">
+        Continue Payment
+      </a>
+    </div>
+
+    <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">
+      If the button does not work, copy and paste this link into your browser:<br>
+      <a href="${escapeHtml(continuePaymentUrl)}" style="color: #6366f1; word-break: break-all;">${escapeHtml(continuePaymentUrl)}</a>
+    </p>
+    <p style="color: #374151; line-height: 1.6;">
+      If you have already paid or no longer want this order, you can ignore this email. Need help? Reach us at
+      <a href="mailto:support@buydstv.com.ng" style="color: #6366f1;">support@buydstv.com.ng</a>
+      or WhatsApp: 09164633598.
+    </p>
+  `);
+
+  await transporter.sendMail({
+    from: getFromAddress(),
+    to: order.email,
+    subject: `Complete your order - ${order.reference}`,
+    text: `Your order is waiting for you\n\nHi ${order.customerName}, we noticed you started an order on BuyDSTV but the payment was not completed. Your order has been saved.\n\nOrder Details:\n- Reference: ${order.reference}\n- Product: ${order.product}\n- Package: ${order.package}${order.installation ? '\n- Installation: Included' : ''}\n- Delivery Address: ${order.address}\n- Amount Due: ${amountDue}\n\nContinue Payment: ${continuePaymentUrl}\n\nIf you have already paid or no longer want this order, you can ignore this email.\n\nQuestions? Contact support@buydstv.com.ng or WhatsApp: 09164633598.\n\n© ${new Date().getFullYear()} BuyDSTV. All rights reserved.`,
+    html,
+  });
+  console.log(`Payment reminder email sent to ${order.email} for order ${order.reference}`);
+}
+
 // ─── Utility ─────────────────────────────────────────────────────────
 
 function escapeHtml(str: string): string {

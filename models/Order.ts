@@ -65,6 +65,43 @@ const OrderSchema = new Schema<IOrder>(
       required: true,
       unique: true,
     },
+    // Paystack reference of the most recent payment attempt.
+    paymentReference: {
+      type: String,
+    },
+    // Every Paystack reference initialized for this order (retries use new references).
+    paymentReferences: {
+      type: [String],
+      default: undefined,
+    },
+    paymentAttempts: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
+    // Paystack checkout URL of the most recent attempt.
+    authorizationUrl: {
+      type: String,
+    },
+    lastPaymentAttemptAt: {
+      type: Date,
+    },
+    // Short-lived lock that serializes concurrent payment re-initializations.
+    paymentLockUntil: {
+      type: Date,
+    },
+    // Abandoned-payment reminder bookkeeping.
+    reminderSentAt: {
+      type: Date,
+    },
+    reminderClaimedAt: {
+      type: Date,
+    },
+    reminderFailures: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,
@@ -76,6 +113,10 @@ OrderSchema.index({ customerId: 1, createdAt: -1 });
 OrderSchema.index({ email: 1 });
 OrderSchema.index({ paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ createdAt: -1 });
+// Lookup by any Paystack attempt reference (payment retries)
+OrderSchema.index({ paymentReferences: 1 });
+// Abandoned-payment reminder scan
+OrderSchema.index({ paymentStatus: 1, reminderSentAt: 1, createdAt: 1 });
 
 export const Order: Model<IOrder> =
   mongoose.models.Order || mongoose.model<IOrder>('Order', OrderSchema);

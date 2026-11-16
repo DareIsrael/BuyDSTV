@@ -8,6 +8,7 @@ import { formatPrice } from '@/lib/utils';
 import { IOrder } from '@/types/order';
 import { getVisiblePageNumbers } from '@/lib/pagination';
 import { VideoBackground } from '@/components/VideoBackground';
+import { getContinuePaymentPath, getPaymentRetryEligibility } from '@/lib/order-payment';
 import Link from 'next/link';
 
 export default function CustomerOrdersPage() {
@@ -54,6 +55,7 @@ export default function CustomerOrdersPage() {
       case 'success': return 'text-green-400 bg-green-500/10';
       case 'pending': return 'text-yellow-400 bg-yellow-500/10';
       case 'failed': return 'text-red-400 bg-red-500/10';
+      case 'expired': return 'text-gray-400 bg-gray-500/10';
       default: return 'text-gray-400 bg-gray-500/10';
     }
   };
@@ -131,18 +133,32 @@ export default function CustomerOrdersPage() {
                         })}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
+                    <div className="flex flex-col items-start md:items-end gap-3">
+                      <div className="md:text-right">
                         <p className="text-xl font-bold text-primary">{formatPrice(order.totalPrice)}</p>
                         <div className="flex gap-2 mt-1">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(order.paymentStatus)}`}>
-                            {order.paymentStatus}
-                          </span>
+                          {(() => {
+                            const eligibility = getPaymentRetryEligibility(order);
+                            const expired = !eligibility.eligible && eligibility.reason === 'expired';
+                            return (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(expired ? 'expired' : order.paymentStatus)}`}>
+                                {expired ? 'expired' : order.paymentStatus}
+                              </span>
+                            );
+                          })()}
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getOrderStatusColor(order.orderStatus)}`}>
                             {order.orderStatus}
                           </span>
                         </div>
                       </div>
+                      {getPaymentRetryEligibility(order).eligible && (
+                        <Link
+                          href={getContinuePaymentPath(order._id)}
+                          className="inline-block text-center px-4 py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
+                        >
+                          {order.paymentStatus === 'failed' ? 'Retry Payment' : 'Continue Payment'}
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </motion.div>

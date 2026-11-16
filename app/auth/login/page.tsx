@@ -6,11 +6,16 @@ import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
 import { VideoBackground } from '@/components/VideoBackground';
+import { getSafeCallbackUrl, isDirectReturnPath } from '@/lib/auth-redirect';
 import Link from 'next/link';
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = getSafeCallbackUrl(
+    searchParams.get('callbackUrl'),
+    '/',
+    typeof window !== 'undefined' ? window.location.origin : undefined
+  );
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +28,7 @@ function LoginContent() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    let redirecting = false;
 
     try {
       const result = await signIn('credentials', {
@@ -33,13 +39,18 @@ function LoginContent() {
 
       if (result?.error) {
         setError(result.error);
+      } else if (isDirectReturnPath(callbackUrl)) {
+        // The customer came from a "Continue Payment" link: return them to
+        // their order directly instead of showing the product chooser.
+        redirecting = true;
+        window.location.replace(callbackUrl);
       } else {
         setShowSuccessModal(true);
       }
     } catch {
       setError('An error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      if (!redirecting) setIsLoading(false);
     }
   };
 

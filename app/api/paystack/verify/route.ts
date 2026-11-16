@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { paystackService } from '@/services/paystack.service';
 import { connectDB } from '@/lib/db';
 import { Order } from '@/models/Order';
-import { sendPurchaseConfirmationEmail } from '@/lib/email';
+import { paymentRecoveryService } from '@/services/payment-recovery.service';
 import { applyRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -25,12 +25,14 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    // Check if already verified (idempotent)
-    const existingOrder = await Order.findOne({ reference });
+    // The reference may belong to any payment attempt of the order, because
+    // each payment retry uses a new Paystack reference.
+    const existingOrder = await paymentRecoveryService.findOrderByPaymentReference(reference);
     if (!existingOrder) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
+    // Idempotent: already verified
     if (existingOrder.paymentStatus === 'success') {
       return NextResponse.json({
         status: true,
@@ -38,18 +40,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Verify with Paystack API
+    // Verify with Paystack API (never trust the redirect alone)
     const response = await paystackService.verifyPayment(reference);
+    const data = response.data as (typeof response.data & { currency?: string }) | undefined;
 
-    if (response.status && response.data?.status === 'success') {
-      // Verify amount matches
-      const paystackAmount = response.data.amount;
-      if (paystackAmount !== existingOrder.totalPrice) {
+    if (response.status && data?.status === 'success') {
+      // Verify amount (kobo) and currency match the stored order
+      const paystackAmount = data.amount;
+      const currencyOk = !data.currency || data.currency === 'NGN';
+      if (paystackAmount !== existingOrder.totalPrice || !currencyOk) {
         console.error(
-          `Verify amount mismatch: Paystack=${paystackAmount}, Order=${existingOrder.totalPrice}, ref=${reference}`
+          `Verify amount mismatch: Paystack=${paystackAmount} ${data.currency || ''}, Order=${existingOrder.totalPrice}, ref=${reference}`
         );
         await Order.findOneAndUpdate(
-          { reference, paymentStatus: { $ne: 'success' } },
+          { _id: existingOrder._id, paymentStatus: { $ne: 'success' } },
           { paymentStatus: 'failed' }
         );
         return NextResponse.json(
@@ -58,20 +62,8 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Atomically update only if not already success
-      const updated = await Order.findOneAndUpdate(
-        { reference, paymentStatus: { $ne: 'success' } },
-        { paymentStatus: 'success' },
-        { returnDocument: 'after' }
-      );
-
-      if (updated) {
-        try {
-          await sendPurchaseConfirmationEmail(updated);
-        } catch (err) {
-          console.error('Failed to send confirmation email:', err);
-        }
-      }
+      // Atomically mark as paid (only once) and send the confirmation email
+      await paymentRecoveryService.markOrderPaid(String(existingOrder._id), reference);
 
       return NextResponse.json({
         status: true,
@@ -79,14 +71,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Payment not successful at Paystack
-    await Order.findOneAndUpdate(
-      { reference, paymentStatus: { $ne: 'success' } },
-      { paymentStatus: 'failed' }
-    );
+    // Payment not successful. Only the current attempt may move the order to
+    // failed, so a stale attempt cannot override a newer pending one.
+    const currentAttempt = existingOrder.paymentReference || existingOrder.reference;
+    if (currentAttempt === reference) {
+      await Order.findOneAndUpdate(
+        { _id: existingOrder._id, paymentStatus: { $ne: 'success' } },
+        { paymentStatus: 'failed' }
+      );
+    }
 
     return NextResponse.json(
-      { error: 'Payment verification failed' },
+      {
+        error: 'Payment verification failed',
+        orderId: String(existingOrder._id),
+      },
       { status: 400 }
     );
   } catch (error) {

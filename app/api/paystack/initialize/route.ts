@@ -4,6 +4,7 @@ import { orderService } from '@/services/order.service';
 import { productService } from '@/services/product.service';
 import { packageService } from '@/services/package.service';
 import { installationService } from '@/services/installation.service';
+import { paymentRecoveryService } from '@/services/payment-recovery.service';
 import { generateReference } from '@/lib/utils';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
@@ -80,6 +81,43 @@ export async function POST(request: NextRequest) {
     // Calculate amount SERVER-SIDE — never trust client amount
     const serverAmount = dbProduct.price + dbPackage.price + installationPrice;
 
+    // Duplicate prevention: if the customer already has an unpaid, payable
+    // order for exactly these items, resume payment for that order instead of
+    // creating another one.
+    const existingOrder = await paymentRecoveryService.findRetryableDuplicate({
+      customerId,
+      product: dbProduct.name,
+      packageName: dbPackage.name,
+      installation: wantsInstallation,
+      totalPrice: serverAmount,
+    });
+
+    if (existingOrder) {
+      const resumed = await paymentRecoveryService.resumePayment(String(existingOrder._id), customerId);
+      if (resumed.status === 'redirect') {
+        return NextResponse.json({
+          status: true,
+          resumed: true,
+          orderId: String(existingOrder._id),
+          data: {
+            authorization_url: resumed.authorizationUrl,
+            reference: resumed.reference,
+          },
+        });
+      }
+      if (resumed.status === 'busy') {
+        return NextResponse.json(
+          { error: 'Your payment is already being prepared. Please wait a moment and try again.' },
+          { status: 409 }
+        );
+      }
+      if (resumed.status === 'error') {
+        return NextResponse.json({ error: resumed.message }, { status: 400 });
+      }
+      // 'already_paid' / 'ineligible' / 'not_found': the previous order can no
+      // longer be paid, so a fresh order is created below.
+    }
+
     const reference = generateReference();
 
     const response = await paystackService.initializePayment(
@@ -97,7 +135,7 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (response.status) {
+    if (response.status && response.data?.authorization_url) {
       await orderService.createOrder({
         customerId,
         customerName,
@@ -110,6 +148,11 @@ export async function POST(request: NextRequest) {
         installation: wantsInstallation,
         installationPrice,
         reference,
+        paymentReference: reference,
+        paymentReferences: [reference],
+        paymentAttempts: 1,
+        authorizationUrl: response.data.authorization_url,
+        lastPaymentAttemptAt: new Date(),
       });
 
       return NextResponse.json(response);

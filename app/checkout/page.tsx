@@ -4,7 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { productService } from '@/services/product.service';
 import { packageService } from '@/services/package.service';
 import { installationService } from '@/services/installation.service';
-import { CheckoutClient } from './CheckoutClient';
+import { CheckoutClient, PendingOrderSummary } from './CheckoutClient';
+import { paymentRecoveryService } from '@/services/payment-recovery.service';
 import { VideoBackground } from '@/components/VideoBackground';
 
 interface CheckoutPageProps {
@@ -33,6 +34,24 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
   const packages = await packageService.getPackagesByProductType(productType);
   const installationOption = await installationService.getByProductType(productType);
 
+  // Unpaid orders the customer can still pay, so they can resume instead of
+  // placing a duplicate order. A lookup failure must not block checkout.
+  let pendingOrders: PendingOrderSummary[] = [];
+  try {
+    const retryable = await paymentRecoveryService.getRetryableOrders(user.id, 3);
+    pendingOrders = retryable.map((o) => ({
+      _id: String(o._id),
+      reference: o.reference,
+      product: o.product,
+      package: o.package,
+      totalPrice: o.totalPrice,
+      paymentStatus: o.paymentStatus,
+      createdAt: new Date(o.createdAt).toISOString(),
+    }));
+  } catch (err) {
+    console.error('Failed to load pending orders for checkout:', err);
+  }
+
   if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center pt-16">
@@ -59,6 +78,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
             phone: user.phone || '',
             address: user.address || '',
           }}
+          pendingOrders={pendingOrders}
         />
       </div>
     </div>

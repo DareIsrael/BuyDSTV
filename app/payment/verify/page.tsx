@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/Button';
 import { VideoBackground } from '@/components/VideoBackground';
+import { getContinuePaymentPath } from '@/lib/order-payment';
 
 type VerifyStatus = 'loading' | 'success' | 'failed';
 
@@ -14,6 +15,7 @@ function PaymentVerifyContent() {
   const reference = searchParams.get('reference');
   const [status, setStatus] = useState<VerifyStatus>('loading');
   const [message, setMessage] = useState('');
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!reference) return;
@@ -22,7 +24,7 @@ function PaymentVerifyContent() {
 
     const verifyPayment = async () => {
       try {
-        const response = await fetch(`/api/paystack/verify?reference=${reference}`);
+        const response = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(reference)}`);
         const data = await response.json();
 
         if (!isSubscribed) return;
@@ -32,6 +34,7 @@ function PaymentVerifyContent() {
           setMessage('Your payment was successful! Your order is being processed.');
         } else {
           setStatus('failed');
+          setOrderId(typeof data.orderId === 'string' ? data.orderId : null);
           setMessage(data.error || 'Payment verification failed. Please contact support.');
         }
       } catch {
@@ -86,9 +89,15 @@ function PaymentVerifyContent() {
           <h1 className="text-2xl font-bold text-red-500 mb-2">Payment Failed</h1>
           <p className="text-gray-400 mb-8">{activeMessage}</p>
           <div className="flex flex-col gap-3">
-            <Button onClick={() => router.push('/checkout')} className="w-full">
-              Try Again
-            </Button>
+            {orderId ? (
+              <Button onClick={() => router.push(getContinuePaymentPath(orderId))} className="w-full">
+                Retry Payment
+              </Button>
+            ) : (
+              <Button onClick={() => router.push('/orders')} className="w-full">
+                View My Orders
+              </Button>
+            )}
             <Button variant="outline" onClick={() => router.push('/')} className="w-full">
               Back to Home
             </Button>
